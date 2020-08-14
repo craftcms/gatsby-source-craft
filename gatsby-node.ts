@@ -60,7 +60,7 @@ async function getGatsbyNodeTypes() {
     const schema = await getSchema()
     const fromIface = (ifaceName: string, doc: (type: string) => string): IGatsbyNodeConfig[] => {
         const iface = schema.getType(ifaceName) as GraphQLAbstractType;
-        return schema.getPossibleTypes(iface).map(type => ({
+        return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
             remoteTypeName: type.name,
             remoteIdFields: [`__typename`, `id`],
             queries: doc(type.name),

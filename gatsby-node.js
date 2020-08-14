@@ -36,7 +36,7 @@ async function getGatsbyNodeTypes() {
     const schema = await getSchema();
     const fromIface = (ifaceName, doc) => {
         const iface = schema.getType(ifaceName);
-        return schema.getPossibleTypes(iface).map(type => ({
+        return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
             remoteTypeName: type.name,
             remoteIdFields: [`__typename`, `id`],
             queries: doc(type.name),

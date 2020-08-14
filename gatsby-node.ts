@@ -33,8 +33,9 @@ const fragmentsDir = __dirname + "/src/craft-fragments";
 const debugDir = __dirname + "/.cache/craft-graphql-documents";
 const gatsbyTypePrefix = `Craft_`;
 
-let craftGqlToken: string;
-let craftGqlUrl: string;
+const craftGqlToken = process.env.CRAFTGQL_TOKEN;
+const craftGqlUrl = process.env.CRAFTGQL_URL;
+
 let schema: GraphQLSchema;
 let gatsbyNodeTypes: IGatsbyNodeConfig[];
 let sourcingConfig: ISourcingConfig & {verbose: boolean};
@@ -163,8 +164,6 @@ async function execute(operation: { operationName: string, query: string, variab
 
 
 exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
-    craftGqlToken = pluginOptions.token;
-    craftGqlUrl = pluginOptions.endpoint;
     await writeDefaultFragments()
 }
 

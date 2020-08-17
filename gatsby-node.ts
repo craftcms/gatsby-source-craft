@@ -5,8 +5,6 @@ import {ISourcingConfig, IGatsbyNodeDefinition, IGatsbyNodeConfig} from "gatsby-
 import {NodePluginArgs} from "gatsby";
 
 type SourcePluginOptions = {
-    token: string;
-    endpoint: string;
 }
 
 /**
@@ -58,24 +56,70 @@ async function getGatsbyNodeTypes() {
         return gatsbyNodeTypes
     }
     const schema = await getSchema()
-    const fromIface = (ifaceName: string, doc: (type: string) => string): IGatsbyNodeConfig[] => {
-        const iface = schema.getType(ifaceName) as GraphQLAbstractType;
+    const fromIface = (interfaceName: string, doc: (type: string) => string): IGatsbyNodeConfig[] => {
+        const iface = schema.getType(interfaceName) as GraphQLAbstractType;
         return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
             remoteTypeName: type.name,
-            remoteIdFields: [`__typename`, `id`],
             queries: doc(type.name),
         }))
     }
 
     // prettier-ignore
+    const fragmentHelper = (interFaceName: string): {fragmentName: string, fragment: string} => {
+        const fragmentName = '_Craft' + interFaceName.substr(0, interFaceName.indexOf('Interface')) + 'ID_';
+        return {
+            fragmentName: fragmentName,
+            fragment: `
+                fragment ${fragmentName} on ${interFaceName} {
+                    __typename
+                    id
+                }
+            `
+        };
+    };
 
+    const
     return (gatsbyNodeTypes = [
         ...fromIface(`EntryInterface`, type => `
-      query LIST_${type} { entries(type: "${type.split(`_`)[0]}", limit: $limit, offset: $offset) }
-      query NODE_${type} { entry(type: "${type.split(`_`)[0]}", id: $id) }
+            query LIST_${type} { 
+                entries(type: "${type.split(`_`)[0]}", limit: $limit, offset: $offset) {
+                    ... ${fragmentHelper('EntryInterface').fragmentName}    
+                }
+                ${fragmentHelper('EntryInterface').fragment}
+            }
+            query NODE_${type} { entry(id: $id) }
     `),
         ...fromIface(`AssetInterface`, type => `
-      query LIST_${type} { assets(limit: $limit, offset: $offset) }
+            query LIST_${type} { assets(limit: $limit, offset: $offset) {
+                ... ${fragmentHelper('AssetInterface').fragmentName}    
+            }
+            ${fragmentHelper('AssetInterface').fragment}
+        }
+        query NODE_${type} { asset(id: $id) }
+    `),
+        ...fromIface(`UserInterface`, type => `
+            query LIST_${type} { users(limit: $limit, offset: $offset) {
+                ... ${fragmentHelper('UserInterface').fragmentName}    
+            }
+            ${fragmentHelper('UserInterface').fragment}
+        }
+        query NODE_${type} { asset(id: $id) }
+    `),
+        ...fromIface(`AssetInterface`, type => `
+            query LIST_${type} { assets(limit: $limit, offset: $offset) {
+                ... ${fragmentHelper('AssetInterface').fragmentName}    
+            }
+            ${fragmentHelper('AssetInterface').fragment}
+        }
+        query NODE_${type} { asset(id: $id) }
+    `),
+        ...fromIface(`AssetInterface`, type => `
+            query LIST_${type} { assets(limit: $limit, offset: $offset) {
+                ... ${fragmentHelper('AssetInterface').fragmentName}    
+            }
+            ${fragmentHelper('AssetInterface').fragment}
+        }
+        query NODE_${type} { asset(id: $id) }
     `),
         ...fromIface(`UserInterface`, type => `
       query LIST_${type} { users(limit: $limit, offset: $offset) }

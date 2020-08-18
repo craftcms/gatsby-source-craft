@@ -1,11 +1,15 @@
-
 import {GraphQLSchema} from "graphql";
-import {GraphQLAbstractType, GraphQLObjectType} from "graphql/type/definition";
-import {ISourcingConfig, IGatsbyNodeDefinition, IGatsbyNodeConfig} from "gatsby-graphql-source-toolkit/dist/types";
+import {
+    GraphQLAbstractType,
+    GraphQLList,
+    GraphQLType,
+    GraphQLOutputType,
+    GraphQLInterfaceType
+} from "graphql/type/definition";
+import {IGatsbyNodeConfig, IGatsbyNodeDefinition, ISourcingConfig} from "gatsby-graphql-source-toolkit/dist/types";
 import {NodePluginArgs} from "gatsby";
 
-type SourcePluginOptions = {
-}
+type SourcePluginOptions = {}
 
 /**
  * Implement Gatsby's Node APIs in this file.
@@ -26,6 +30,7 @@ const {
     wrapQueryExecutorWithQueue,
     loadSchema,
 } = require("gatsby-graphql-source-toolkit")
+const {isInterfaceType, isListType} = require("graphql")
 
 const fragmentsDir = __dirname + "/src/craft-fragments";
 const debugDir = __dirname + "/.cache/craft-graphql-documents";
@@ -36,13 +41,7 @@ const craftGqlUrl = process.env.CRAFTGQL_URL;
 
 let schema: GraphQLSchema;
 let gatsbyNodeTypes: IGatsbyNodeConfig[];
-let sourcingConfig: ISourcingConfig & {verbose: boolean};
-
-// 1. Gatsby field aliases
-// 2. Node ID transforms?
-// 3. Pagination strategies?
-// 4. Schema customization field transforms?
-// 5. Query variable provider?
+let sourcingConfig: ISourcingConfig & { verbose: boolean };
 
 async function getSchema() {
     if (!schema) {
@@ -55,9 +54,50 @@ async function getGatsbyNodeTypes() {
     if (gatsbyNodeTypes) {
         return gatsbyNodeTypes
     }
+
     const schema = await getSchema()
-    const fromIface = (interfaceName: string, doc: (type: string) => string): IGatsbyNodeConfig[] => {
-        const iface = schema.getType(interfaceName) as GraphQLAbstractType;
+
+    const queries = schema.getQueryType()?.getFields();
+
+    if (!queries) {
+        return ([]);
+    }
+
+    const queryMap: {
+        [key: string]: {
+            list?: string,
+            node?: string
+        }
+    } = {};
+
+    // Check all the queries
+    for (let typeDef of Object.values(queries)) {
+        let queryName = typeDef.name;
+        let returnType = typeDef.type;
+        let plural = false;
+
+        // If wrapped in a list, unwrap and mark as plural
+        if (isListType(typeDef.type)) {
+            returnType = (typeDef.type as GraphQLList<GraphQLType>).ofType as GraphQLOutputType;
+            plural = true;
+        }
+
+        // If this is an interface
+        if (isInterfaceType(returnType)) {
+            let obj = plural ? {list: queryName} : {node: queryName};
+
+            if (!queryMap[(returnType as GraphQLInterfaceType).name]) {
+                queryMap[(returnType as GraphQLInterfaceType).name] = {};
+            }
+
+            // Add the relevant query to the interface in the map
+            queryMap[(returnType as GraphQLInterfaceType).name] = Object.assign(queryMap[(returnType as GraphQLInterfaceType).name], obj);
+        }
+    }
+
+    const extractNodesFromInterface = (ifaceName: string, doc: (type: string) => string): IGatsbyNodeConfig[] => {
+        const iface = schema.getType(ifaceName) as GraphQLAbstractType;
+
         return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
             remoteTypeName: type.name,
             queries: doc(type.name),
@@ -65,72 +105,46 @@ async function getGatsbyNodeTypes() {
     }
 
     // prettier-ignore
-    const fragmentHelper = (interFaceName: string): {fragmentName: string, fragment: string} => {
-        const fragmentName = '_Craft' + interFaceName.substr(0, interFaceName.indexOf('Interface')) + 'ID_';
+    // Fragment definition helper
+    const fragmentHelper = (typeName: string): { fragmentName: string, fragment: string } => {
+        const fragmentName = '_Craft' + typeName + 'ID_';
         return {
             fragmentName: fragmentName,
             fragment: `
-                fragment ${fragmentName} on ${interFaceName} {
-                    __typename
-                    id
-                }
+            fragment ${fragmentName} on ${typeName} {
+                __typename
+                id
+            }
             `
         };
     };
 
-    const
-    return (gatsbyNodeTypes = [
-        ...fromIface(`EntryInterface`, type => `
-            query LIST_${type} { 
-                entries(type: "${type.split(`_`)[0]}", limit: $limit, offset: $offset) {
-                    ... ${fragmentHelper('EntryInterface').fragmentName}    
-                }
-                ${fragmentHelper('EntryInterface').fragment}
+    gatsbyNodeTypes = [];
+
+    // For all the mapped queries
+    for (const [key, value] of Object.entries(queryMap)) {
+        // extract all the different types for the interfaces
+        gatsbyNodeTypes.push(...extractNodesFromInterface(key, typeName => {
+            let queries = '';
+            let fragmentInfo = fragmentHelper(typeName);
+
+            queries = fragmentInfo.fragment;
+
+            // and define queries for the concrete type
+            if (value.node) {
+                queries += `query NODE_${typeName} { ${value.node}(id: $id) { ... ${fragmentInfo.fragmentName}  } }
+            `;
             }
-            query NODE_${type} { entry(id: $id) }
-    `),
-        ...fromIface(`AssetInterface`, type => `
-            query LIST_${type} { assets(limit: $limit, offset: $offset) {
-                ... ${fragmentHelper('AssetInterface').fragmentName}    
+            if (value.list) {
+                queries += `query LIST_${typeName} { ${value.list}(type: "${typeName.split('_')[0]}", limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
+            `;
             }
-            ${fragmentHelper('AssetInterface').fragment}
-        }
-        query NODE_${type} { asset(id: $id) }
-    `),
-        ...fromIface(`UserInterface`, type => `
-            query LIST_${type} { users(limit: $limit, offset: $offset) {
-                ... ${fragmentHelper('UserInterface').fragmentName}    
-            }
-            ${fragmentHelper('UserInterface').fragment}
-        }
-        query NODE_${type} { asset(id: $id) }
-    `),
-        ...fromIface(`AssetInterface`, type => `
-            query LIST_${type} { assets(limit: $limit, offset: $offset) {
-                ... ${fragmentHelper('AssetInterface').fragmentName}    
-            }
-            ${fragmentHelper('AssetInterface').fragment}
-        }
-        query NODE_${type} { asset(id: $id) }
-    `),
-        ...fromIface(`AssetInterface`, type => `
-            query LIST_${type} { assets(limit: $limit, offset: $offset) {
-                ... ${fragmentHelper('AssetInterface').fragmentName}    
-            }
-            ${fragmentHelper('AssetInterface').fragment}
-        }
-        query NODE_${type} { asset(id: $id) }
-    `),
-        ...fromIface(`UserInterface`, type => `
-      query LIST_${type} { users(limit: $limit, offset: $offset) }
-    `),
-        ...fromIface(`TagInterface`, type => `
-      query LIST_${type} { tags(limit: $limit, offset: $offset) }
-    `),
-        ...fromIface(`GlobalSetInterface`, type => `
-      query LIST_${type} { globalSets(limit: $limit, offset: $offset) }
-    `),
-    ])
+
+            return queries;
+        }));
+    }
+
+    return (gatsbyNodeTypes);
 }
 
 async function writeDefaultFragments() {
@@ -206,7 +220,6 @@ async function execute(operation: { operationName: string, query: string, variab
     return await res.json()
 }
 
-
 exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
     await writeDefaultFragments()
 }
@@ -222,31 +235,32 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePlu
     const cached = (await cache.get(`CRAFT_SOURCED`)) || false
 
     if (cached) {
-        // Applying changes since the last sourcing
-        const nodeEvents = [
-            {
-                eventName: "DELETE",
-                remoteTypeName: "blog_blog_Entry",
-                remoteId: {__typename: "blog_blog_Entry", id: "422"},
-            },
-            {
-                eventName: "UPDATE",
-                remoteTypeName: "blog_blog_Entry",
-                remoteId: {__typename: "blog_blog_Entry", id: "421"},
-            },
-            {
-                eventName: "UPDATE",
-                remoteTypeName: "blog_blog_Entry",
-                remoteId: {__typename: "blog_blog_Entry", id: "18267"},
-            },
-            {
-                eventName: "UPDATE",
-                remoteTypeName: "blog_blog_Entry",
-                remoteId: {__typename: "blog_blog_Entry", id: "11807"},
-            },
-        ]
-        console.log(`Sourcing delta!`)
-        await sourceNodeChanges(config, {nodeEvents})
+        // TODO node events for deltas
+        // // Applying changes since the last sourcing
+        // const nodeEvents = [
+        //     {
+        //         eventName: "DELETE",
+        //         remoteTypeName: "blog_blog_Entry",
+        //         remoteId: {__typename: "blog_blog_Entry", id: "422"},
+        //     },
+        //     {
+        //         eventName: "UPDATE",
+        //         remoteTypeName: "blog_blog_Entry",
+        //         remoteId: {__typename: "blog_blog_Entry", id: "421"},
+        //     },
+        //     {
+        //         eventName: "UPDATE",
+        //         remoteTypeName: "blog_blog_Entry",
+        //         remoteId: {__typename: "blog_blog_Entry", id: "18267"},
+        //     },
+        //     {
+        //         eventName: "UPDATE",
+        //         remoteTypeName: "blog_blog_Entry",
+        //         remoteId: {__typename: "blog_blog_Entry", id: "11807"},
+        //     },
+        // ]
+        //console.log(`Sourcing delta!`)
+        //await sourceNodeChanges(config, {nodeEvents})
         return
     }
 

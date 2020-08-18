@@ -1,8 +1,7 @@
 <p align="center">
   <img src="craftcms-gatsby.svg" width="278" height="100" alt="Craft CMS + Gatsby">
 </p>
-
-# Craft CMS source plugin for Gatsby
+<h1 align="center">Craft CMS source plugin for Gatsby</h1>
 
 This Gatsby source plugin provides an integration with [Craft CMS](https://craftcms.com). It uses Craft’s [GraphQL API](https://docs.craftcms.com/v3/graphql.html) to make content within Craft available to Gatsby-powered front ends.
 

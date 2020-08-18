@@ -63,12 +63,7 @@ async function getGatsbyNodeTypes() {
         return ([]);
     }
 
-    const queryMap: {
-        [key: string]: {
-            list?: string,
-            node?: string
-        }
-    } = {};
+    const queryMap: { [key: string]: { list?: string, node?: string } } = {};
 
     // Check all the queries
     for (let typeDef of Object.values(queries)) {
@@ -85,13 +80,9 @@ async function getGatsbyNodeTypes() {
         // If this is an interface
         if (isInterfaceType(returnType)) {
             let obj = plural ? {list: queryName} : {node: queryName};
-
-            if (!queryMap[(returnType as GraphQLInterfaceType).name]) {
-                queryMap[(returnType as GraphQLInterfaceType).name] = {};
-            }
-
+            
             // Add the relevant query to the interface in the map
-            queryMap[(returnType as GraphQLInterfaceType).name] = Object.assign(queryMap[(returnType as GraphQLInterfaceType).name], obj);
+            queryMap[(returnType as GraphQLInterfaceType).name] = Object.assign(queryMap[(returnType as GraphQLInterfaceType).name] ?? {}, obj);
         }
     }
 
@@ -122,21 +113,21 @@ async function getGatsbyNodeTypes() {
     gatsbyNodeTypes = [];
 
     // For all the mapped queries
-    for (const [key, value] of Object.entries(queryMap)) {
+    for (const [interfaceName, interfaceQueries] of Object.entries(queryMap)) {
         // extract all the different types for the interfaces
-        gatsbyNodeTypes.push(...extractNodesFromInterface(key, typeName => {
+        gatsbyNodeTypes.push(...extractNodesFromInterface(interfaceName, typeName => {
             let queries = '';
             let fragmentInfo = fragmentHelper(typeName);
 
             queries = fragmentInfo.fragment;
 
             // and define queries for the concrete type
-            if (value.node) {
-                queries += `query NODE_${typeName} { ${value.node}(id: $id) { ... ${fragmentInfo.fragmentName}  } }
+            if (interfaceQueries.node) {
+                queries += `query NODE_${typeName} { ${interfaceQueries.node}(id: $id) { ... ${fragmentInfo.fragmentName}  } }
             `;
             }
-            if (value.list) {
-                queries += `query LIST_${typeName} { ${value.list}(type: "${typeName.split('_')[0]}", limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
+            if (interfaceQueries.list) {
+                queries += `query LIST_${typeName} { ${interfaceQueries.list}(type: "${typeName.split('_')[0]}", limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
             `;
             }
 

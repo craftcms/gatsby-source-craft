@@ -1,18 +1,12 @@
-<!-- AUTO-GENERATED-CONTENT:START (STARTER) -->
 <p align="center">
-  <a href="https://www.gatsbyjs.org">
-    <img alt="Gatsby" src="https://www.gatsbyjs.org/monogram.svg" width="60" />
-  </a>
+  <img src="craftcms-gatsby.svg" width="278" height="100" alt="Craft CMS + Gatsby">
 </p>
 
-# Example: Craft CMS GraphQL API
+# Craft CMS source plugin for Gatsby
 
-Craft CMS exposes a nice [GraphQL API](https://docs.craftcms.com/v3/graphql.html)
-which is our endpoint in this plugin.
+This Gatsby source plugin provides an integration with [Craft CMS](https://craftcms.com). It uses Craft’s [GraphQL API](https://docs.craftcms.com/v3/graphql.html) to make content within Craft available to Gatsby-powered front ends.
 
-Every Craft instance is different but they all have common interfaces and root fields.
-
-Interfaces: 
+Available interfaces:
 
 - `EntryInterface`
 - `AssetInterface`

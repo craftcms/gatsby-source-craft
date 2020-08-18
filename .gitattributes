@@ -1,0 +1,11 @@
+.gitattributes export-ignore
+.github/ export-ignore
+.gitignore export-ignore
+.travis.yml export-ignore
+CHANGELOG.md export-ignore
+README.md export-ignore
+craftcms-gatsby.svg export-ignore
+package-lock.json export-ignore
+
+# Auto detect text files and perform LF normalization
+* text=auto

@@ -9,7 +9,9 @@ import {
 import {IGatsbyNodeConfig, IGatsbyNodeDefinition, ISourcingConfig} from "gatsby-graphql-source-toolkit/dist/types";
 import {NodePluginArgs} from "gatsby";
 
-type SourcePluginOptions = {}
+type SourcePluginOptions = {
+    concurrency: number
+}
 
 /**
  * Implement Gatsby's Node APIs in this file.
@@ -38,6 +40,9 @@ const gatsbyTypePrefix = `Craft_`;
 
 const craftGqlToken = process.env.CRAFTGQL_TOKEN;
 const craftGqlUrl = process.env.CRAFTGQL_URL;
+const loadedPluginOptions: SourcePluginOptions = {
+    concurrency: 10
+};
 
 let schema: GraphQLSchema;
 let gatsbyNodeTypes: IGatsbyNodeConfig[];
@@ -171,31 +176,6 @@ async function writeCompiledQueries(nodeDocs: IGatsbyNodeDefinition[]) {
     }
 }
 
-async function getSourcingConfig(gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) {
-    if (sourcingConfig) {
-        return sourcingConfig
-    }
-    const schema = await getSchema()
-    const gatsbyNodeTypes = await getGatsbyNodeTypes()
-
-    const documents = await compileNodeQueries({
-        schema,
-        gatsbyNodeTypes,
-        customFragments: await collectFragments(),
-    })
-
-    await writeCompiledQueries(documents)
-
-    return (sourcingConfig = {
-        gatsbyApi,
-        schema,
-        gatsbyNodeDefs: buildNodeDefinitions({gatsbyNodeTypes, documents}),
-        gatsbyTypePrefix,
-        execute: wrapQueryExecutorWithQueue(execute, {concurrency: 10}),
-        verbose: true,
-    })
-}
-
 async function execute(operation: { operationName: string, query: string, variables: object }) {
     let {operationName, query, variables = {}} = operation;
 
@@ -211,6 +191,9 @@ async function execute(operation: { operationName: string, query: string, variab
     return await res.json()
 }
 
+exports.onPreInit = (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
+    loadedPluginOptions.concurrency = pluginOptions.concurrency ?? loadedPluginOptions.concurrency;
+}
 exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
     await writeDefaultFragments()
 }
@@ -257,4 +240,29 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePlu
 
     await sourceAllNodes(config)
     await cache.set(`CRAFT_SOURCED`, true)
+}
+
+async function getSourcingConfig(gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) {
+    if (sourcingConfig) {
+        return sourcingConfig
+    }
+    const schema = await getSchema()
+    const gatsbyNodeTypes = await getGatsbyNodeTypes()
+
+    const documents = await compileNodeQueries({
+        schema,
+        gatsbyNodeTypes,
+        customFragments: await collectFragments(),
+    })
+
+    await writeCompiledQueries(documents)
+
+    return (sourcingConfig = {
+        gatsbyApi,
+        schema,
+        gatsbyNodeDefs: buildNodeDefinitions({gatsbyNodeTypes, documents}),
+        gatsbyTypePrefix,
+        execute: wrapQueryExecutorWithQueue(execute, {concurrency: loadedPluginOptions.concurrency}),
+        verbose: true,
+    })
 }

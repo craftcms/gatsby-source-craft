@@ -1,10 +1,10 @@
 import {GraphQLSchema} from "graphql";
 import {
     GraphQLAbstractType,
+    GraphQLInterfaceType,
     GraphQLList,
-    GraphQLType,
     GraphQLOutputType,
-    GraphQLInterfaceType
+    GraphQLType
 } from "graphql/type/definition";
 import {IGatsbyNodeConfig, IGatsbyNodeDefinition, ISourcingConfig} from "gatsby-graphql-source-toolkit/dist/types";
 import {NodePluginArgs} from "gatsby";
@@ -13,11 +13,6 @@ type SourcePluginOptions = {
     concurrency: number
 }
 
-/**
- * Implement Gatsby's Node APIs in this file.
- *
- * See: https://www.gatsbyjs.org/docs/node-apis/
- */
 const fs = require("fs-extra")
 const fetch = require("node-fetch")
 const path = require("path")
@@ -52,7 +47,8 @@ async function getSchema() {
     if (!schema) {
         schema = await loadSchema(execute)
     }
-    return schema
+
+    return schema;
 }
 
 async function getGatsbyNodeTypes() {
@@ -60,7 +56,7 @@ async function getGatsbyNodeTypes() {
         return gatsbyNodeTypes
     }
 
-    const schema = await getSchema()
+    const schema = await getSchema();
 
     const queries = schema.getQueryType()?.getFields();
 
@@ -97,7 +93,7 @@ async function getGatsbyNodeTypes() {
         return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
             remoteTypeName: type.name,
             queries: doc(type.name),
-        }))
+        }));
     }
 
     // prettier-ignore
@@ -206,7 +202,7 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs, pluginOpti
 exports.sourceNodes = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
     const {cache} = gatsbyApi
     const config = await getSourcingConfig(gatsbyApi, pluginOptions)
-    const cached = (await cache.get(`CRAFT_SOURCED`)) || false
+    const cached = (await cache.get(`CRAFT_SOURCE`)) || false
 
     if (cached) {
         // TODO node events for deltas

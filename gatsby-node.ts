@@ -64,26 +64,37 @@ async function getGatsbyNodeTypes() {
         return ([]);
     }
 
-    const queryMap: { [key: string]: { list?: string, node?: string } } = {};
+    // Check if Craft endpoint has Gatsby plugin installed
+    if (!queries.sourceNodeInformation) {
+        return ([]);
+    }
 
-    // Check all the queries
-    for (let typeDef of Object.values(queries)) {
-        let queryName = typeDef.name;
-        let returnType = typeDef.type;
-        let plural = false;
+    const queryResponse = await execute({
+        operationName: 'sourceNodeData',
+        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression  targetInterface } }',
+        variables: {}
+    });
 
-        // If wrapped in a list, unwrap and mark as plural
-        if (isListType(typeDef.type)) {
-            returnType = (typeDef.type as GraphQLList<GraphQLType>).ofType as GraphQLOutputType;
-            plural = true;
+    if (!(queryResponse.data && queryResponse.data.sourceNodeInformation)) {
+        return ([]);
+    }
+
+    const sourceNodeInformation = queryResponse.data.sourceNodeInformation;
+    const queryMap: { [key: string]: { list: string, node: string,  filterArgument?: string, filterTypeExpression?: string} } = {};
+
+    // Loop through returned data and build the query map Craft has provided for us.
+    for (let nodeInformation of sourceNodeInformation) {
+        queryMap[nodeInformation.targetInterface] = {
+            list: nodeInformation.list,
+            node: nodeInformation.node
+        };
+
+        if (nodeInformation.filterArgument) {
+            queryMap[nodeInformation.targetInterface].filterArgument = nodeInformation.filterArgument;
         }
 
-        // If this is an interface
-        if (isInterfaceType(returnType)) {
-            let obj = plural ? {list: queryName} : {node: queryName};
-            
-            // Add the relevant query to the interface in the map
-            queryMap[(returnType as GraphQLInterfaceType).name] = Object.assign(queryMap[(returnType as GraphQLInterfaceType).name] ?? {}, obj);
+        if (nodeInformation.filterTypeExpression) {
+            queryMap[nodeInformation.targetInterface].filterTypeExpression = nodeInformation.filterTypeExpression;
         }
     }
 
@@ -114,22 +125,29 @@ async function getGatsbyNodeTypes() {
     gatsbyNodeTypes = [];
 
     // For all the mapped queries
-    for (const [interfaceName, interfaceQueries] of Object.entries(queryMap)) {
+    for (let [interfaceName, sourceNodeInformation] of Object.entries(queryMap)) {
         // extract all the different types for the interfaces
-        gatsbyNodeTypes.push(...extractNodesFromInterface(interfaceName, typeName => {
+        gatsbyNodeTypes.push(...extractNodesFromInterface(interfaceName, (typeName) => {
             let queries = '';
             let fragmentInfo = fragmentHelper(typeName);
 
             queries = fragmentInfo.fragment;
 
             // and define queries for the concrete type
-            if (interfaceQueries.node) {
-                queries += `query NODE_${typeName} { ${interfaceQueries.node}(id: $id) { ... ${fragmentInfo.fragmentName}  } }
-            `;
+            if (sourceNodeInformation.node) {
+                queries += `query NODE_${typeName} { ${sourceNodeInformation.node}(id: $id) { ... ${fragmentInfo.fragmentName}  } }
+                `;
             }
-            if (interfaceQueries.list) {
-                queries += `query LIST_${typeName} { ${interfaceQueries.list}(type: "${typeName.split('_')[0]}", limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
-            `;
+
+            if (sourceNodeInformation.filterArgument) {
+                let regexp = new RegExp(sourceNodeInformation.filterTypeExpression as string);
+                const matches = typeName.match(regexp);
+
+                if (matches && matches[1]) {
+                    let typeFilter = sourceNodeInformation.filterArgument + ': "' + matches[1] + '"';
+                    queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
+                    `;
+                }
             }
 
             return queries;

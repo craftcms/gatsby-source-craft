@@ -1,10 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-/**
- * Implement Gatsby's Node APIs in this file.
- *
- * See: https://www.gatsbyjs.org/docs/node-apis/
- */
 const fs = require("fs-extra");
 const fetch = require("node-fetch");
 const path = require("path");
@@ -16,6 +11,9 @@ const debugDir = __dirname + "/.cache/craft-graphql-documents";
 const gatsbyTypePrefix = `Craft_`;
 const craftGqlToken = process.env.CRAFTGQL_TOKEN;
 const craftGqlUrl = process.env.CRAFTGQL_URL;
+const loadedPluginOptions = {
+    concurrency: 10
+};
 let schema;
 let gatsbyNodeTypes;
 let sourcingConfig;
@@ -35,25 +33,31 @@ async function getGatsbyNodeTypes() {
     if (!queries) {
         return ([]);
     }
+    // Check if Craft endpoint has Gatsby plugin installed
+    if (!queries.sourceNodeInformation) {
+        return ([]);
+    }
+    const queryResponse = await execute({
+        operationName: 'sourceNodeData',
+        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression  targetInterface } }',
+        variables: {}
+    });
+    if (!(queryResponse.data && queryResponse.data.sourceNodeInformation)) {
+        return ([]);
+    }
+    const sourceNodeInformation = queryResponse.data.sourceNodeInformation;
     const queryMap = {};
-    // Check all the queries
-    for (let typeDef of Object.values(queries)) {
-        let queryName = typeDef.name;
-        let returnType = typeDef.type;
-        let plural = false;
-        // If wrapped in a list, unwrap and mark as plural
-        if (isListType(typeDef.type)) {
-            returnType = typeDef.type.ofType;
-            plural = true;
+    // Loop through returned data and build the query map Craft has provided for us.
+    for (let nodeInformation of sourceNodeInformation) {
+        queryMap[nodeInformation.targetInterface] = {
+            list: nodeInformation.list,
+            node: nodeInformation.node
+        };
+        if (nodeInformation.filterArgument) {
+            queryMap[nodeInformation.targetInterface].filterArgument = nodeInformation.filterArgument;
         }
-        // If this is an interface
-        if (isInterfaceType(returnType)) {
-            let obj = plural ? { list: queryName } : { node: queryName };
-            if (!queryMap[returnType.name]) {
-                queryMap[returnType.name] = {};
-            }
-            // Add the relevant query to the interface in the map
-            queryMap[returnType.name] = Object.assign(queryMap[returnType.name], obj);
+        if (nodeInformation.filterTypeExpression) {
+            queryMap[nodeInformation.targetInterface].filterTypeExpression = nodeInformation.filterTypeExpression;
         }
     }
     const extractNodesFromInterface = (ifaceName, doc) => {
@@ -79,20 +83,25 @@ async function getGatsbyNodeTypes() {
     };
     gatsbyNodeTypes = [];
     // For all the mapped queries
-    for (const [key, value] of Object.entries(queryMap)) {
+    for (let [interfaceName, sourceNodeInformation] of Object.entries(queryMap)) {
         // extract all the different types for the interfaces
-        gatsbyNodeTypes.push(...extractNodesFromInterface(key, typeName => {
+        gatsbyNodeTypes.push(...extractNodesFromInterface(interfaceName, (typeName) => {
             let queries = '';
             let fragmentInfo = fragmentHelper(typeName);
             queries = fragmentInfo.fragment;
             // and define queries for the concrete type
-            if (value.node) {
-                queries += `query NODE_${typeName} { ${value.node}(id: $id) { ... ${fragmentInfo.fragmentName}  } }
-            `;
+            if (sourceNodeInformation.node) {
+                queries += `query NODE_${typeName} { ${sourceNodeInformation.node}(id: $id) { ... ${fragmentInfo.fragmentName}  } }
+                `;
             }
-            if (value.list) {
-                queries += `query LIST_${typeName} { ${value.list}(type: "${typeName.split('_')[0]}", limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
-            `;
+            if (sourceNodeInformation.filterArgument) {
+                let regexp = new RegExp(sourceNodeInformation.filterTypeExpression);
+                const matches = typeName.match(regexp);
+                if (matches && matches[1]) {
+                    let typeFilter = sourceNodeInformation.filterArgument + ': "' + matches[1] + '"';
+                    queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
+                    `;
+                }
             }
             return queries;
         }));
@@ -129,27 +138,6 @@ async function writeCompiledQueries(nodeDocs) {
         await fs.writeFile(debugDir + `/${remoteTypeName}.graphql`, print(document));
     }
 }
-async function getSourcingConfig(gatsbyApi, pluginOptions) {
-    if (sourcingConfig) {
-        return sourcingConfig;
-    }
-    const schema = await getSchema();
-    const gatsbyNodeTypes = await getGatsbyNodeTypes();
-    const documents = await compileNodeQueries({
-        schema,
-        gatsbyNodeTypes,
-        customFragments: await collectFragments(),
-    });
-    await writeCompiledQueries(documents);
-    return (sourcingConfig = {
-        gatsbyApi,
-        schema,
-        gatsbyNodeDefs: buildNodeDefinitions({ gatsbyNodeTypes, documents }),
-        gatsbyTypePrefix,
-        execute: wrapQueryExecutorWithQueue(execute, { concurrency: 10 }),
-        verbose: true,
-    });
-}
 async function execute(operation) {
     let { operationName, query, variables = {} } = operation;
     // console.log(operationName, variables)
@@ -163,6 +151,10 @@ async function execute(operation) {
     });
     return await res.json();
 }
+exports.onPreInit = (gatsbyApi, pluginOptions) => {
+    var _a;
+    loadedPluginOptions.concurrency = (_a = pluginOptions.concurrency) !== null && _a !== void 0 ? _a : loadedPluginOptions.concurrency;
+};
 exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
     await writeDefaultFragments();
 };
@@ -173,7 +165,7 @@ exports.createSchemaCustomization = async (gatsbyApi, pluginOptions) => {
 exports.sourceNodes = async (gatsbyApi, pluginOptions) => {
     const { cache } = gatsbyApi;
     const config = await getSourcingConfig(gatsbyApi, pluginOptions);
-    const cached = (await cache.get(`CRAFT_SOURCED`)) || false;
+    const cached = (await cache.get(`CRAFT_SOURCE`)) || false;
     if (cached) {
         // TODO node events for deltas
         // // Applying changes since the last sourcing
@@ -206,3 +198,24 @@ exports.sourceNodes = async (gatsbyApi, pluginOptions) => {
     await sourceAllNodes(config);
     await cache.set(`CRAFT_SOURCED`, true);
 };
+async function getSourcingConfig(gatsbyApi, pluginOptions) {
+    if (sourcingConfig) {
+        return sourcingConfig;
+    }
+    const schema = await getSchema();
+    const gatsbyNodeTypes = await getGatsbyNodeTypes();
+    const documents = await compileNodeQueries({
+        schema,
+        gatsbyNodeTypes,
+        customFragments: await collectFragments(),
+    });
+    await writeCompiledQueries(documents);
+    return (sourcingConfig = {
+        gatsbyApi,
+        schema,
+        gatsbyNodeDefs: buildNodeDefinitions({ gatsbyNodeTypes, documents }),
+        gatsbyTypePrefix,
+        execute: wrapQueryExecutorWithQueue(execute, { concurrency: loadedPluginOptions.concurrency }),
+        verbose: true,
+    });
+}

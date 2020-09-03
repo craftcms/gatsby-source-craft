@@ -16,7 +16,7 @@
   "dependencies": {
     "fs-extra": "^9.0.1",
     "gatsby": "^2.21.22",
-    "gatsby-graphql-source-toolkit": "^0.3.1",
+    "gatsby-graphql-source-toolkit": "^0.4.0",
     "node-fetch": "^2.6.0",
     "react": "^16.12.0",
     "react-dom": "^16.12.0"

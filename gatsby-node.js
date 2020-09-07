@@ -159,46 +159,69 @@ exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
     await writeDefaultFragments();
 };
 exports.createSchemaCustomization = async (gatsbyApi, pluginOptions) => {
-    const config = await getSourcingConfig(gatsbyApi, pluginOptions);
+    const config = await getSourcingConfig(gatsbyApi);
     await createSchemaCustomization(config);
 };
-exports.sourceNodes = async (gatsbyApi, pluginOptions) => {
-    const { cache } = gatsbyApi;
-    const config = await getSourcingConfig(gatsbyApi, pluginOptions);
-    const cached = (await cache.get(`CRAFT_SOURCE`)) || false;
-    if (cached) {
-        // TODO node events for deltas
-        // // Applying changes since the last sourcing
-        // const nodeEvents = [
-        //     {
-        //         eventName: "DELETE",
-        //         remoteTypeName: "blog_blog_Entry",
-        //         remoteId: {__typename: "blog_blog_Entry", id: "422"},
-        //     },
-        //     {
-        //         eventName: "UPDATE",
-        //         remoteTypeName: "blog_blog_Entry",
-        //         remoteId: {__typename: "blog_blog_Entry", id: "421"},
-        //     },
-        //     {
-        //         eventName: "UPDATE",
-        //         remoteTypeName: "blog_blog_Entry",
-        //         remoteId: {__typename: "blog_blog_Entry", id: "18267"},
-        //     },
-        //     {
-        //         eventName: "UPDATE",
-        //         remoteTypeName: "blog_blog_Entry",
-        //         remoteId: {__typename: "blog_blog_Entry", id: "11807"},
-        //     },
-        // ]
-        //console.log(`Sourcing delta!`)
-        //await sourceNodeChanges(config, {nodeEvents})
-        return;
+exports.sourceNodes = async (gatsbyApi) => {
+    const { cache, reporter } = gatsbyApi;
+    const config = await getSourcingConfig(gatsbyApi);
+    reporter.info("Checking Craft config version.");
+    const { data } = await execute({
+        operationName: 'craftState',
+        query: 'query craftState { configVersion  lastUpdateTime}',
+        variables: {}
+    });
+    const remoteConfigVersion = data.configVersion;
+    const remoteContentUpdateTime = data.lastUpdateTime;
+    const localConfigVersion = (await cache.get(`CRAFT_CONFIG_VERSION`)) || '';
+    const localContentUpdateTime = (await cache.get(`CRAFT_LAST_CONTENT_UPDATE`)) || '';
+    if (remoteConfigVersion !== localConfigVersion || !localContentUpdateTime) {
+        reporter.info("Cached content is unavailable or outdated, sourcing _all_ nodes.");
+        reporter.info("remoteConfigVersion was " + remoteConfigVersion);
+        reporter.info("localConfigVersion was " + localConfigVersion);
+        reporter.info("localContentUpdateTime was " + localContentUpdateTime);
+        await sourceAllNodes(config);
+        await cache.set(`CRAFT_CONFIG_VERSION`, remoteConfigVersion);
+        await cache.set(`CRAFT_LAST_CONTENT_UPDATE`, remoteContentUpdateTime);
     }
-    await sourceAllNodes(config);
-    await cache.set(`CRAFT_SOURCED`, true);
+    else {
+        reporter.info(`Craft config version has not changed since last sourcing. Checking for content changes since "${localContentUpdateTime}".`);
+        const { data } = await execute({
+            operationName: 'nodeChanges',
+            query: `query nodeChanges {  
+                nodesUpdatedSince (since: "${localContentUpdateTime}") { nodeId nodeType }
+                nodesDeletedSince (since: "${localContentUpdateTime}") { nodeId nodeType }
+            }`,
+            variables: {}
+        });
+        const updatedNodes = data.nodesUpdatedSince;
+        const deletedNodes = data.nodesUpdatedSince;
+        const nodeEvents = [
+            ...updatedNodes.map(entry => {
+                return {
+                    eventName: 'UPDATE',
+                    remoteTypeName: entry.nodeType,
+                    remoteId: { __typename: entry.nodeType, id: entry.nodeId }
+                };
+            }),
+            ...deletedNodes.map(entry => {
+                return {
+                    eventName: 'DELETE',
+                    remoteTypeName: entry.nodeType,
+                    remoteId: { __typename: entry.nodeType, id: entry.nodeId }
+                };
+            })
+        ];
+        if (nodeEvents.length) {
+            reporter.info("Sourcing changes for " + nodeEvents.length + " nodes.");
+            await sourceNodeChanges(config, { nodeEvents });
+        }
+        else {
+            reporter.info("No content changes found.");
+        }
+    }
 };
-async function getSourcingConfig(gatsbyApi, pluginOptions) {
+async function getSourcingConfig(gatsbyApi) {
     if (sourcingConfig) {
         return sourcingConfig;
     }

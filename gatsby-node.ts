@@ -10,7 +10,8 @@ import {IGatsbyNodeConfig, IGatsbyNodeDefinition, ISourcingConfig} from "gatsby-
 import {NodePluginArgs} from "gatsby";
 
 type SourcePluginOptions = {
-    concurrency: number
+    concurrency: number,
+}
 }
 
 const fs = require("fs-extra")

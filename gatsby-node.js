@@ -181,8 +181,6 @@ exports.sourceNodes = async (gatsbyApi) => {
         reporter.info("localConfigVersion was " + localConfigVersion);
         reporter.info("localContentUpdateTime was " + localContentUpdateTime);
         await sourceAllNodes(config);
-        await cache.set(`CRAFT_CONFIG_VERSION`, remoteConfigVersion);
-        await cache.set(`CRAFT_LAST_CONTENT_UPDATE`, remoteContentUpdateTime);
     }
     else {
         reporter.info(`Craft config version has not changed since last sourcing. Checking for content changes since "${localContentUpdateTime}".`);
@@ -220,6 +218,8 @@ exports.sourceNodes = async (gatsbyApi) => {
             reporter.info("No content changes found.");
         }
     }
+    await cache.set(`CRAFT_CONFIG_VERSION`, remoteConfigVersion);
+    await cache.set(`CRAFT_LAST_CONTENT_UPDATE`, remoteContentUpdateTime);
 };
 async function getSourcingConfig(gatsbyApi) {
     if (sourcingConfig) {

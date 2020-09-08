@@ -11,7 +11,12 @@ This plugins sources the data from a Craft installation. On initial run, the ent
 
 If anything that gets written to the project config has changed, the entire site is sourced again.
 
-# Usage:
+# Installation
+
+Download the contents of this repository and install it using the [npm link command](https://docs.npmjs.com/cli/link.html).
+
+# Usage
+
 Make sure that the following environment variables are defined:
 
 ```title:.env
@@ -20,4 +25,5 @@ CRAFTGQL_URL=https://craftcms-endpoint
 ```
 
 # Configuration options
+
 - `concurrency`: The number of concurrent connections to use when querying the Craft installation.

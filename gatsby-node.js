@@ -193,7 +193,7 @@ exports.sourceNodes = async (gatsbyApi) => {
             variables: {}
         });
         const updatedNodes = data.nodesUpdatedSince;
-        const deletedNodes = data.nodesUpdatedSince;
+        const deletedNodes = data.nodesDeletedSince;
         const nodeEvents = [
             ...updatedNodes.map(entry => {
                 return {

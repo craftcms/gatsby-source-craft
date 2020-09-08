@@ -260,7 +260,7 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
         });
 
         const updatedNodes = data.nodesUpdatedSince as ModifiedNodeInfo[];
-        const deletedNodes = data.nodesUpdatedSince as ModifiedNodeInfo[];
+        const deletedNodes = data.nodesDeletedSince as ModifiedNodeInfo[];
 
         const nodeEvents = [
             ...updatedNodes.map( entry => {

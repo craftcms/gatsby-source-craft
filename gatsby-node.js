@@ -175,9 +175,6 @@ exports.sourceNodes = async (gatsbyApi) => {
     const localContentUpdateTime = (await cache.get(`CRAFT_LAST_CONTENT_UPDATE`)) || '';
     if (remoteConfigVersion !== localConfigVersion || !localContentUpdateTime) {
         reporter.info("Cached content is unavailable or outdated, sourcing _all_ nodes.");
-        reporter.info("remoteConfigVersion was " + remoteConfigVersion);
-        reporter.info("localConfigVersion was " + localConfigVersion);
-        reporter.info("localContentUpdateTime was " + localContentUpdateTime);
         await sourceAllNodes(config);
     }
     else {

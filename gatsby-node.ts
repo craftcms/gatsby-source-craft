@@ -240,10 +240,6 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
 
     if (remoteConfigVersion !== localConfigVersion || !localContentUpdateTime) {
         reporter.info("Cached content is unavailable or outdated, sourcing _all_ nodes.");
-        reporter.info("remoteConfigVersion was " + remoteConfigVersion);
-        reporter.info("localConfigVersion was " + localConfigVersion);
-        reporter.info("localContentUpdateTime was " + localContentUpdateTime);
-
         await sourceAllNodes(config)
     } else {
         reporter.info(`Craft config version has not changed since last sourcing. Checking for content changes since "${localContentUpdateTime}".`);
@@ -284,6 +280,7 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
             reporter.info("No content changes found.");
         }
     }
+
     await cache.set(`CRAFT_CONFIG_VERSION`, remoteConfigVersion);
     await cache.set(`CRAFT_LAST_CONTENT_UPDATE`, remoteContentUpdateTime);
 }

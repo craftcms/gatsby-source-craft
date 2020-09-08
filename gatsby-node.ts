@@ -210,10 +210,8 @@ async function execute(operation: { operationName: string, query: string, variab
     return await res.json()
 }
 
-exports.onPreInit = (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
-    loadedPluginOptions.concurrency = pluginOptions.concurrency ?? loadedPluginOptions.concurrency;
-}
 exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
+    loadedPluginOptions.concurrency = pluginOptions.concurrency ?? loadedPluginOptions.concurrency;
     await writeDefaultFragments()
 }
 

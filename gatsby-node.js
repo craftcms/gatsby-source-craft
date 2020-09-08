@@ -151,11 +151,9 @@ async function execute(operation) {
     });
     return await res.json();
 }
-exports.onPreInit = (gatsbyApi, pluginOptions) => {
+exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
     var _a;
     loadedPluginOptions.concurrency = (_a = pluginOptions.concurrency) !== null && _a !== void 0 ? _a : loadedPluginOptions.concurrency;
-};
-exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
     await writeDefaultFragments();
 };
 exports.createSchemaCustomization = async (gatsbyApi, pluginOptions) => {

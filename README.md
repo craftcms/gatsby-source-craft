@@ -7,6 +7,8 @@ This Gatsby source plugin provides an integration with [Craft CMS](https://craft
 
 It requires for the corresponding [Gatsby Craft plugin](https://github.com/craftcms/craft-gatsby) to be installed on the Craft site.
 
+This plugins sources the data from a Craft installation. On initial run, the entire site is stored, while on subsequent runs, only delta changes are applied, significantly reducing build time.
+
 # Usage:
 Make sure that the following environment variables are defined:
 
@@ -16,5 +18,4 @@ CRAFTGQL_URL=https://craftcms-endpoint
 ```
 
 # Configuration options
-
 - `concurrency`: The number of concurrent connections to use when querying the Craft installation.

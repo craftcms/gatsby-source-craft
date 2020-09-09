@@ -207,11 +207,11 @@ exports.sourceNodes = async (gatsbyApi) => {
         ];
         if (nodeEvents.length) {
             reporter.info("Sourcing changes for " + nodeEvents.length + " nodes.");
-            await sourceNodeChanges(config, { nodeEvents });
         }
         else {
             reporter.info("No content changes found.");
         }
+        await sourceNodeChanges(config, { nodeEvents });
     }
     await cache.set(`CRAFT_CONFIG_VERSION`, remoteConfigVersion);
     await cache.set(`CRAFT_LAST_CONTENT_UPDATE`, remoteContentUpdateTime);

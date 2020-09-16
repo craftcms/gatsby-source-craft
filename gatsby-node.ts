@@ -11,6 +11,9 @@ import {NodePluginArgs} from "gatsby";
 
 type SourcePluginOptions = {
     concurrency: number,
+    debugDir: string,
+    fragmentsDir: string,
+    typePrefix: string
 }
 
 type ModifiedNodeInfo = {
@@ -34,14 +37,13 @@ const {
 } = require("gatsby-graphql-source-toolkit")
 const {isInterfaceType, isListType} = require("graphql")
 
-const fragmentsDir = __dirname + "/src/craft-fragments";
-const debugDir = __dirname + "/.cache/craft-graphql-documents";
-const gatsbyTypePrefix = `Craft_`;
-
 const craftGqlToken = process.env.CRAFTGQL_TOKEN;
 const craftGqlUrl = process.env.CRAFTGQL_URL;
 const loadedPluginOptions: SourcePluginOptions = {
-    concurrency: 10
+    concurrency: 10,
+    debugDir: __dirname + "/.cache/craft-graphql-documents",
+    fragmentsDir: __dirname + "/src/craft-fragments",
+    typePrefix: "Craft_"
 };
 
 let schema: GraphQLSchema;
@@ -168,7 +170,7 @@ async function writeDefaultFragments() {
         gatsbyNodeTypes: await getGatsbyNodeTypes(),
     })
     for (const [remoteTypeName, fragment] of defaultFragments) {
-        const filePath = path.join(fragmentsDir, `${remoteTypeName}.graphql`)
+        const filePath = path.join(loadedPluginOptions.fragmentsDir, `${remoteTypeName}.graphql`)
         if (!fs.existsSync(filePath)) {
             await fs.writeFile(filePath, fragment)
         }
@@ -177,9 +179,9 @@ async function writeDefaultFragments() {
 
 async function collectFragments() {
     const customFragments = []
-    for (const fileName of await fs.readdir(fragmentsDir)) {
+    for (const fileName of await fs.readdir(loadedPluginOptions.fragmentsDir)) {
         if (/.graphql$/.test(fileName)) {
-            const filePath = path.join(fragmentsDir, fileName)
+            const filePath = path.join(loadedPluginOptions.fragmentsDir, fileName)
             const fragment = await fs.readFile(filePath)
             customFragments.push(fragment.toString())
         }
@@ -188,10 +190,9 @@ async function collectFragments() {
 }
 
 async function writeCompiledQueries(nodeDocs: IGatsbyNodeDefinition[]) {
-    await fs.ensureDir(debugDir)
     // @ts-ignore
     for (const [remoteTypeName, document] of nodeDocs) {
-        await fs.writeFile(debugDir + `/${remoteTypeName}.graphql`, print(document))
+        await fs.writeFile(loadedPluginOptions.debugDir + `/${remoteTypeName}.graphql`, print(document))
     }
 }
 
@@ -212,6 +213,13 @@ async function execute(operation: { operationName: string, query: string, variab
 
 exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
     loadedPluginOptions.concurrency = pluginOptions.concurrency ?? loadedPluginOptions.concurrency;
+    loadedPluginOptions.debugDir = pluginOptions.debugDir ?? loadedPluginOptions.debugDir;
+    loadedPluginOptions.fragmentsDir = pluginOptions.fragmentsDir ?? loadedPluginOptions.fragmentsDir;
+    loadedPluginOptions.typePrefix = pluginOptions.typePrefix ?? loadedPluginOptions.typePrefix;
+
+    await fs.ensureDir(loadedPluginOptions.debugDir)
+    await fs.ensureDir(loadedPluginOptions.fragmentsDir)
+
     await writeDefaultFragments()
 }
 
@@ -305,7 +313,7 @@ async function getSourcingConfig(gatsbyApi: NodePluginArgs) {
         gatsbyApi,
         schema,
         gatsbyNodeDefs: buildNodeDefinitions({gatsbyNodeTypes, documents}),
-        gatsbyTypePrefix,
+        gatsbyTypePrefix: loadedPluginOptions.typePrefix,
         execute: wrapQueryExecutorWithQueue(execute, {concurrency: loadedPluginOptions.concurrency}),
         verbose: true,
     })

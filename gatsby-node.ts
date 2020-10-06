@@ -7,7 +7,7 @@ import {
     GraphQLType
 } from "graphql/type/definition";
 import {IGatsbyNodeConfig, IGatsbyNodeDefinition, ISourcingConfig} from "gatsby-graphql-source-toolkit/dist/types";
-import {NodePluginArgs} from "gatsby";
+import {NodePluginArgs, Reporter} from "gatsby";
 
 type SourcePluginOptions = {
     concurrency: number,
@@ -199,7 +199,6 @@ async function writeCompiledQueries(nodeDocs: IGatsbyNodeDefinition[]) {
 async function execute(operation: { operationName: string, query: string, variables: object }) {
     let {operationName, query, variables = {}} = operation;
 
-    // console.log(operationName, variables)
     const res = await fetch(craftGqlUrl, {
         method: "POST",
         body: JSON.stringify({query, variables, operationName}),
@@ -220,7 +219,7 @@ exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: Source
     await fs.ensureDir(loadedPluginOptions.debugDir)
     await fs.ensureDir(loadedPluginOptions.fragmentsDir)
 
-    await writeDefaultFragments()
+    await ensureFragmentsExist(gatsbyApi.reporter)
 }
 
 exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
@@ -317,4 +316,16 @@ async function getSourcingConfig(gatsbyApi: NodePluginArgs) {
         execute: wrapQueryExecutorWithQueue(execute, {concurrency: loadedPluginOptions.concurrency}),
         verbose: true,
     })
+}
+
+async function ensureFragmentsExist(reporter: Reporter) {
+    const fragmentDir = loadedPluginOptions.fragmentsDir;
+    const fragments = await fs.readdir(fragmentDir);
+
+    if (fragments.length == 0) {
+        reporter.info("No fragments found, writing default fragments.")
+        await writeDefaultFragments();
+    } else {
+        reporter.info(fragments.length + " fragments found, skipping writing default fragments")
+    }
 }

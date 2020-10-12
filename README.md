@@ -11,11 +11,11 @@ This plugins sources the data from a Craft installation. On initial run, the ent
 
 If anything that gets written to the project config has changed, the entire site is sourced again.
 
-# Installation
+## Installation
 
 Download the contents of this repository and install it using the [npm link command](https://docs.npmjs.com/cli/link.html).
 
-# Usage
+## Usage
 
 Make sure that the following environment variables are defined:
 
@@ -24,7 +24,7 @@ CRAFTGQL_TOKEN=YOUR_TOKEN
 CRAFTGQL_URL=https://craftcms-endpoint
 ```
 
-# Configuration options
+## Configuration options
 
 - `concurrency`: The number of concurrent connections to use when querying the Craft installation.
 - `debugDir`: The directory to use for storing generated GraphQL documents for debug purposes.

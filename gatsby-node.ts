@@ -6,8 +6,13 @@ import {
     GraphQLOutputType,
     GraphQLType
 } from "graphql/type/definition";
-import {IGatsbyNodeConfig, IGatsbyNodeDefinition, ISourcingConfig} from "gatsby-graphql-source-toolkit/dist/types";
-import {NodePluginArgs, Reporter} from "gatsby";
+import {
+    IGatsbyNodeConfig,
+    IGatsbyNodeDefinition,
+    IRemoteId,
+    ISourcingConfig
+} from "gatsby-graphql-source-toolkit/dist/types";
+import {CreatePageArgs, NodePluginArgs, Reporter} from "gatsby";
 
 type SourcePluginOptions = {
     concurrency: number,
@@ -19,6 +24,13 @@ type SourcePluginOptions = {
 type ModifiedNodeInfo = {
     nodeId: number,
     nodeType: string
+}
+
+type WebhookBody = {
+    operation: string,
+    typeName: string,
+    id: number,
+    token?: string
 }
 
 const fs = require("fs-extra")
@@ -39,6 +51,8 @@ const {isInterfaceType, isListType} = require("graphql")
 
 const craftGqlToken = process.env.CRAFTGQL_TOKEN;
 const craftGqlUrl = process.env.CRAFTGQL_URL;
+const craftPreviewUrl = process.env.CRAFTPREVIEW_URL ?? '';
+
 const loadedPluginOptions: SourcePluginOptions = {
     concurrency: 10,
     debugDir: __dirname + "/.cache/craft-graphql-documents",
@@ -49,7 +63,11 @@ const loadedPluginOptions: SourcePluginOptions = {
 let schema: GraphQLSchema;
 let gatsbyNodeTypes: IGatsbyNodeConfig[];
 let sourcingConfig: ISourcingConfig & { verbose: boolean };
+let previewToken: string|null;
 
+/**
+ * Fetch the schema
+ */
 async function getSchema() {
     if (!schema) {
         schema = await loadSchema(execute)
@@ -58,6 +76,9 @@ async function getSchema() {
     return schema;
 }
 
+/**
+ * Return a list of all possible Gatsby node types
+ */
 async function getGatsbyNodeTypes() {
     if (gatsbyNodeTypes) {
         return gatsbyNodeTypes
@@ -71,7 +92,7 @@ async function getGatsbyNodeTypes() {
         return ([]);
     }
 
-    // Check if Craft endpoint has Gatsby plugin installed
+    // Check if Craft endpoint has Gatsby plugin installed and enabled.
     if (!queries.sourceNodeInformation) {
         return ([]);
     }
@@ -87,7 +108,7 @@ async function getGatsbyNodeTypes() {
     }
 
     const sourceNodeInformation = queryResponse.data.sourceNodeInformation;
-    const queryMap: { [key: string]: { list: string, node: string,  filterArgument?: string, filterTypeExpression?: string} } = {};
+    const queryMap: { [key: string]: { list: string, node: string, filterArgument?: string, filterTypeExpression?: string } } = {};
 
     // Loop through returned data and build the query map Craft has provided for us.
     for (let nodeInformation of sourceNodeInformation) {
@@ -105,17 +126,25 @@ async function getGatsbyNodeTypes() {
         }
     }
 
-    const extractNodesFromInterface = (ifaceName: string, doc: (type: string) => string): IGatsbyNodeConfig[] => {
+    /**
+     * Helper function that extracts possible Gatsby nodes by interface name
+     * @param string  ifaceName
+     * @param callable queryListBuilder
+     */
+    const extractNodesFromInterface = (ifaceName: string, queryListBuilder: (type: string) => string): IGatsbyNodeConfig[] => {
         const iface = schema.getType(ifaceName) as GraphQLAbstractType;
 
         return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
             remoteTypeName: type.name,
-            queries: doc(type.name),
+            queries: queryListBuilder(type.name),
         }));
     }
 
     // prettier-ignore
-    // Fragment definition helper
+    /**
+     * Fragment definition helper
+     * @param string typeName
+     */
     const fragmentHelper = (typeName: string): { fragmentName: string, fragment: string } => {
         const fragmentName = '_Craft' + typeName + 'ID_';
         return {
@@ -164,19 +193,27 @@ async function getGatsbyNodeTypes() {
     return (gatsbyNodeTypes);
 }
 
+/**
+ * Write default fragments to the disk.
+ */
 async function writeDefaultFragments() {
     const defaultFragments = generateDefaultFragments({
         schema: await getSchema(),
         gatsbyNodeTypes: await getGatsbyNodeTypes(),
     })
+
     for (const [remoteTypeName, fragment] of defaultFragments) {
         const filePath = path.join(loadedPluginOptions.fragmentsDir, `${remoteTypeName}.graphql`)
+
         if (!fs.existsSync(filePath)) {
             await fs.writeFile(filePath, fragment)
         }
     }
 }
 
+/**
+ * Collect fragments from the disk.
+ */
 async function collectFragments() {
     const customFragments = []
     for (const fileName of await fs.readdir(loadedPluginOptions.fragmentsDir)) {
@@ -189,6 +226,10 @@ async function collectFragments() {
     return customFragments
 }
 
+/**
+ * Write the compiled sourcing queries to the disk
+ * @param nodeDocs
+ */
 async function writeCompiledQueries(nodeDocs: IGatsbyNodeDefinition[]) {
     // @ts-ignore
     for (const [remoteTypeName, document] of nodeDocs) {
@@ -196,29 +237,50 @@ async function writeCompiledQueries(nodeDocs: IGatsbyNodeDefinition[]) {
     }
 }
 
+/**
+ * Execute a GraphQL query
+ * @param operation
+ */
 async function execute(operation: { operationName: string, query: string, variables: object }) {
     let {operationName, query, variables = {}} = operation;
+
+    const headers: { [key: string]: string } = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${craftGqlToken}`,
+    };
+
+    // If there is a preview token set, this is probably a preview request and we should use the right URL.
+    let url = previewToken ? craftPreviewUrl : craftGqlUrl;
+
+    // Set the token, if it exists
+    if (previewToken) {
+        headers['X-Craft-Token'] = previewToken;
+    }
 
     const res = await fetch(craftGqlUrl, {
         method: "POST",
         body: JSON.stringify({query, variables, operationName}),
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${craftGqlToken}`,
-        },
-    })
+        headers
+    });
+
+    // Aaaand remove the token for subsequent requests
+    previewToken = null;
+
     return await res.json()
 }
 
 exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
+    // Set all the config settings pre-bootstrap
     loadedPluginOptions.concurrency = pluginOptions.concurrency ?? loadedPluginOptions.concurrency;
     loadedPluginOptions.debugDir = pluginOptions.debugDir ?? loadedPluginOptions.debugDir;
     loadedPluginOptions.fragmentsDir = pluginOptions.fragmentsDir ?? loadedPluginOptions.fragmentsDir;
     loadedPluginOptions.typePrefix = pluginOptions.typePrefix ?? loadedPluginOptions.typePrefix;
 
+    // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir)
     await fs.ensureDir(loadedPluginOptions.fragmentsDir)
 
+    // Make sure the fragments exist
     await ensureFragmentsExist(gatsbyApi.reporter)
 }
 
@@ -227,9 +289,44 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs, pluginOpti
     await createSchemaCustomization(config)
 }
 
+// Source the actual Gatsby nodes
 exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
-    const {cache, reporter} = gatsbyApi
+    const {cache, reporter, webhookBody} = gatsbyApi
     const config = await getSourcingConfig(gatsbyApi)
+
+    // If this is a webhook call
+    if (webhookBody && typeof webhookBody == "object" && Object.keys(webhookBody).length) {
+        reporter.info("Processing webhook.");
+        const nodeEvent = (webhookBody: WebhookBody) => {
+            const {operation, typeName, id} = webhookBody;
+            let eventName = '';
+
+            switch (operation) {
+                case 'delete':
+                    eventName = 'DELETE';
+                    break;
+                case 'update':
+                    eventName = 'UPDATE';
+                    break;
+            }
+
+            previewToken = webhookBody.token ?? null;
+
+            // Create the node event
+            return {
+                eventName,
+                remoteTypeName: typeName,
+                remoteId: {id, __typename: typeName},
+            }
+        }
+
+        // And source it
+        await sourceNodeChanges(config, {
+            nodeEvents: [nodeEvent(webhookBody as WebhookBody)],
+        })
+
+        return;
+    }
 
     reporter.info("Checking Craft config version.");
 
@@ -245,12 +342,14 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
     const localConfigVersion = (await cache.get(`CRAFT_CONFIG_VERSION`)) || '';
     const localContentUpdateTime = (await cache.get(`CRAFT_LAST_CONTENT_UPDATE`)) || '';
 
+    // If either project config changed or we don't have cached content, source it all
     if (remoteConfigVersion !== localConfigVersion || !localContentUpdateTime) {
         reporter.info("Cached content is unavailable or outdated, sourcing _all_ nodes.");
         await sourceAllNodes(config)
     } else {
         reporter.info(`Craft config version has not changed since last sourcing. Checking for content changes since "${localContentUpdateTime}".`);
 
+        // otherwise, check for changed and deleted content.
         const {data} = await execute({
             operationName: 'nodeChanges',
             query: `query nodeChanges {  
@@ -263,15 +362,16 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
         const updatedNodes = data.nodesUpdatedSince as ModifiedNodeInfo[];
         const deletedNodes = data.nodesDeletedSince as ModifiedNodeInfo[];
 
+        // Create the sourcing node events
         const nodeEvents = [
-            ...updatedNodes.map( entry => {
+            ...updatedNodes.map(entry => {
                 return {
                     eventName: 'UPDATE',
                     remoteTypeName: entry.nodeType,
                     remoteId: {__typename: entry.nodeType, id: entry.nodeId}
                 };
             }),
-            ...deletedNodes.map( entry => {
+            ...deletedNodes.map(entry => {
                 return {
                     eventName: 'DELETE',
                     remoteTypeName: entry.nodeType,
@@ -286,6 +386,7 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
             reporter.info("No content changes found.");
         }
 
+        // And source, if needed
         await sourceNodeChanges(config, {nodeEvents})
     }
 

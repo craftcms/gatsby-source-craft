@@ -1,4 +1,5 @@
 "use strict";
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs-extra");
 const fetch = require("node-fetch");
@@ -8,6 +9,7 @@ const { sourceAllNodes, sourceNodeChanges, createSchemaCustomization, generateDe
 const { isInterfaceType, isListType } = require("graphql");
 const craftGqlToken = process.env.CRAFTGQL_TOKEN;
 const craftGqlUrl = process.env.CRAFTGQL_URL;
+const craftPreviewUrl = (_a = process.env.CRAFTPREVIEW_URL) !== null && _a !== void 0 ? _a : '';
 const loadedPluginOptions = {
     concurrency: 10,
     debugDir: __dirname + "/.cache/craft-graphql-documents",
@@ -17,12 +19,19 @@ const loadedPluginOptions = {
 let schema;
 let gatsbyNodeTypes;
 let sourcingConfig;
+let previewToken;
+/**
+ * Fetch the schema
+ */
 async function getSchema() {
     if (!schema) {
         schema = await loadSchema(execute);
     }
     return schema;
 }
+/**
+ * Return a list of all possible Gatsby node types
+ */
 async function getGatsbyNodeTypes() {
     var _a;
     if (gatsbyNodeTypes) {
@@ -33,7 +42,7 @@ async function getGatsbyNodeTypes() {
     if (!queries) {
         return ([]);
     }
-    // Check if Craft endpoint has Gatsby plugin installed
+    // Check if Craft endpoint has Gatsby plugin installed and enabled.
     if (!queries.sourceNodeInformation) {
         return ([]);
     }
@@ -60,15 +69,23 @@ async function getGatsbyNodeTypes() {
             queryMap[nodeInformation.targetInterface].filterTypeExpression = nodeInformation.filterTypeExpression;
         }
     }
-    const extractNodesFromInterface = (ifaceName, doc) => {
+    /**
+     * Helper function that extracts possible Gatsby nodes by interface name
+     * @param string  ifaceName
+     * @param callable queryListBuilder
+     */
+    const extractNodesFromInterface = (ifaceName, queryListBuilder) => {
         const iface = schema.getType(ifaceName);
         return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
             remoteTypeName: type.name,
-            queries: doc(type.name),
+            queries: queryListBuilder(type.name),
         }));
     };
     // prettier-ignore
-    // Fragment definition helper
+    /**
+     * Fragment definition helper
+     * @param string typeName
+     */
     const fragmentHelper = (typeName) => {
         const fragmentName = '_Craft' + typeName + 'ID_';
         return {
@@ -108,6 +125,9 @@ async function getGatsbyNodeTypes() {
     }
     return (gatsbyNodeTypes);
 }
+/**
+ * Write default fragments to the disk.
+ */
 async function writeDefaultFragments() {
     const defaultFragments = generateDefaultFragments({
         schema: await getSchema(),
@@ -120,6 +140,9 @@ async function writeDefaultFragments() {
         }
     }
 }
+/**
+ * Collect fragments from the disk.
+ */
 async function collectFragments() {
     const customFragments = [];
     for (const fileName of await fs.readdir(loadedPluginOptions.fragmentsDir)) {
@@ -131,41 +154,91 @@ async function collectFragments() {
     }
     return customFragments;
 }
+/**
+ * Write the compiled sourcing queries to the disk
+ * @param nodeDocs
+ */
 async function writeCompiledQueries(nodeDocs) {
     // @ts-ignore
     for (const [remoteTypeName, document] of nodeDocs) {
         await fs.writeFile(loadedPluginOptions.debugDir + `/${remoteTypeName}.graphql`, print(document));
     }
 }
+/**
+ * Execute a GraphQL query
+ * @param operation
+ */
 async function execute(operation) {
     let { operationName, query, variables = {} } = operation;
+    const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${craftGqlToken}`,
+    };
+    // If there is a preview token set, this is probably a preview request and we should use the right URL.
+    let url = previewToken ? craftPreviewUrl : craftGqlUrl;
+    // Set the token, if it exists
+    if (previewToken) {
+        headers['X-Craft-Token'] = previewToken;
+    }
     const res = await fetch(craftGqlUrl, {
         method: "POST",
         body: JSON.stringify({ query, variables, operationName }),
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${craftGqlToken}`,
-        },
+        headers
     });
+    // Aaaand remove the token for subsequent requests
+    previewToken = null;
     return await res.json();
 }
 exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
     var _a, _b, _c, _d;
+    // Set all the config settings pre-bootstrap
     loadedPluginOptions.concurrency = (_a = pluginOptions.concurrency) !== null && _a !== void 0 ? _a : loadedPluginOptions.concurrency;
     loadedPluginOptions.debugDir = (_b = pluginOptions.debugDir) !== null && _b !== void 0 ? _b : loadedPluginOptions.debugDir;
     loadedPluginOptions.fragmentsDir = (_c = pluginOptions.fragmentsDir) !== null && _c !== void 0 ? _c : loadedPluginOptions.fragmentsDir;
     loadedPluginOptions.typePrefix = (_d = pluginOptions.typePrefix) !== null && _d !== void 0 ? _d : loadedPluginOptions.typePrefix;
+    // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir);
     await fs.ensureDir(loadedPluginOptions.fragmentsDir);
+    // Make sure the fragments exist
     await ensureFragmentsExist(gatsbyApi.reporter);
 };
 exports.createSchemaCustomization = async (gatsbyApi, pluginOptions) => {
     const config = await getSourcingConfig(gatsbyApi);
     await createSchemaCustomization(config);
 };
+// Source the actual Gatsby nodes
 exports.sourceNodes = async (gatsbyApi) => {
-    const { cache, reporter } = gatsbyApi;
+    const { cache, reporter, webhookBody } = gatsbyApi;
     const config = await getSourcingConfig(gatsbyApi);
+    // If this is a webhook call
+    if (webhookBody && typeof webhookBody == "object" && Object.keys(webhookBody).length) {
+        reporter.info("Processing webhook.");
+        const nodeEvent = (webhookBody) => {
+            var _a;
+            const { operation, typeName, id } = webhookBody;
+            let eventName = '';
+            switch (operation) {
+                case 'delete':
+                    eventName = 'DELETE';
+                    break;
+                case 'update':
+                    eventName = 'UPDATE';
+                    break;
+            }
+            previewToken = (_a = webhookBody.token) !== null && _a !== void 0 ? _a : null;
+            // Create the node event
+            return {
+                eventName,
+                remoteTypeName: typeName,
+                remoteId: { id, __typename: typeName },
+            };
+        };
+        // And source it
+        await sourceNodeChanges(config, {
+            nodeEvents: [nodeEvent(webhookBody)],
+        });
+        return;
+    }
     reporter.info("Checking Craft config version.");
     const { data } = await execute({
         operationName: 'craftState',
@@ -176,12 +249,14 @@ exports.sourceNodes = async (gatsbyApi) => {
     const remoteContentUpdateTime = data.lastUpdateTime;
     const localConfigVersion = (await cache.get(`CRAFT_CONFIG_VERSION`)) || '';
     const localContentUpdateTime = (await cache.get(`CRAFT_LAST_CONTENT_UPDATE`)) || '';
+    // If either project config changed or we don't have cached content, source it all
     if (remoteConfigVersion !== localConfigVersion || !localContentUpdateTime) {
         reporter.info("Cached content is unavailable or outdated, sourcing _all_ nodes.");
         await sourceAllNodes(config);
     }
     else {
         reporter.info(`Craft config version has not changed since last sourcing. Checking for content changes since "${localContentUpdateTime}".`);
+        // otherwise, check for changed and deleted content.
         const { data } = await execute({
             operationName: 'nodeChanges',
             query: `query nodeChanges {  
@@ -192,6 +267,7 @@ exports.sourceNodes = async (gatsbyApi) => {
         });
         const updatedNodes = data.nodesUpdatedSince;
         const deletedNodes = data.nodesDeletedSince;
+        // Create the sourcing node events
         const nodeEvents = [
             ...updatedNodes.map(entry => {
                 return {
@@ -214,6 +290,7 @@ exports.sourceNodes = async (gatsbyApi) => {
         else {
             reporter.info("No content changes found.");
         }
+        // And source, if needed
         await sourceNodeChanges(config, { nodeEvents });
     }
     await cache.set(`CRAFT_CONFIG_VERSION`, remoteConfigVersion);

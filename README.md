@@ -28,5 +28,5 @@ CRAFTGQL_URL=https://craftcms-endpoint
 
 - `concurrency`: The number of concurrent connections to use when querying the Craft installation.
 - `debugDir`: The directory to use for storing generated GraphQL documents for debug purposes.
-- `fragmentsDir`: The directory to use for storing the generated fragments.
+- `fragmentsDir`: The directory to use for storing the GraphQL fragments.
 - `typePrefix`: The type prefix to use for Craft schema types.

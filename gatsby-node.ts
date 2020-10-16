@@ -51,7 +51,6 @@ const {isInterfaceType, isListType} = require("graphql")
 
 const craftGqlToken = process.env.CRAFTGQL_TOKEN;
 const craftGqlUrl = process.env.CRAFTGQL_URL;
-const craftPreviewUrl = process.env.CRAFTPREVIEW_URL ?? '';
 
 const loadedPluginOptions: SourcePluginOptions = {
     concurrency: 10,
@@ -248,9 +247,6 @@ async function execute(operation: { operationName: string, query: string, variab
         "Content-Type": "application/json",
         Authorization: `Bearer ${craftGqlToken}`,
     };
-
-    // If there is a preview token set, this is probably a preview request and we should use the right URL.
-    let url = previewToken ? craftPreviewUrl : craftGqlUrl;
 
     // Set the token, if it exists
     if (previewToken) {

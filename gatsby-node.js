@@ -1,5 +1,4 @@
 "use strict";
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs-extra");
 const fetch = require("node-fetch");
@@ -9,7 +8,6 @@ const { sourceAllNodes, sourceNodeChanges, createSchemaCustomization, generateDe
 const { isInterfaceType, isListType } = require("graphql");
 const craftGqlToken = process.env.CRAFTGQL_TOKEN;
 const craftGqlUrl = process.env.CRAFTGQL_URL;
-const craftPreviewUrl = (_a = process.env.CRAFTPREVIEW_URL) !== null && _a !== void 0 ? _a : '';
 const loadedPluginOptions = {
     concurrency: 10,
     debugDir: __dirname + "/.cache/craft-graphql-documents",
@@ -174,12 +172,11 @@ async function execute(operation) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${craftGqlToken}`,
     };
-    // If there is a preview token set, this is probably a preview request and we should use the right URL.
-    let url = previewToken ? craftPreviewUrl : craftGqlUrl;
     // Set the token, if it exists
     if (previewToken) {
         headers['X-Craft-Token'] = previewToken;
     }
+
     const res = await fetch(craftGqlUrl, {
         method: "POST",
         body: JSON.stringify({ query, variables, operationName }),

@@ -2,7 +2,7 @@ import {GraphQLSchema} from "graphql";
 import {
     GraphQLAbstractType,
     GraphQLInterfaceType,
-    GraphQLList,
+    GraphQLList, GraphQLObjectType,
     GraphQLOutputType,
     GraphQLType
 } from "graphql/type/definition";
@@ -133,10 +133,16 @@ async function getGatsbyNodeTypes() {
     const extractNodesFromInterface = (ifaceName: string, queryListBuilder: (type: string, canBeDraft: boolean) => string): IGatsbyNodeConfig[] => {
         const iface = schema.getType(ifaceName) as GraphQLAbstractType;
 
-        return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
-            remoteTypeName: type.name,
-            queries: queryListBuilder(type.name, type.hasOwnProperty('sourceId')),
-        }));
+        const canBeDraft = (input: unknown): boolean => {
+            return typeof input === 'object' && input !== null && '_fields' in input && 'sourceId' in (input as GraphQLObjectType).getFields();
+        }
+
+        return !iface ? [] : schema.getPossibleTypes(iface).map(type => {
+            return ({
+                remoteTypeName: type.name,
+                queries: queryListBuilder(type.name, canBeDraft(type)),
+            })
+        });
     }
 
     // prettier-ignore

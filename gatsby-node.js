@@ -74,10 +74,15 @@ async function getGatsbyNodeTypes() {
      */
     const extractNodesFromInterface = (ifaceName, queryListBuilder) => {
         const iface = schema.getType(ifaceName);
-        return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
-            remoteTypeName: type.name,
-            queries: queryListBuilder(type.name, type.hasOwnProperty('sourceId')),
-        }));
+        const canBeDraft = (input) => {
+            return typeof input === 'object' && input !== null && '_fields' in input && 'sourceId' in input.getFields();
+        };
+        return !iface ? [] : schema.getPossibleTypes(iface).map(type => {
+            return ({
+                remoteTypeName: type.name,
+                queries: queryListBuilder(type.name, canBeDraft(type)),
+            });
+        });
     };
     // prettier-ignore
     /**

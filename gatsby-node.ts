@@ -130,12 +130,12 @@ async function getGatsbyNodeTypes() {
      * @param string  ifaceName
      * @param callable queryListBuilder
      */
-    const extractNodesFromInterface = (ifaceName: string, queryListBuilder: (type: string) => string): IGatsbyNodeConfig[] => {
+    const extractNodesFromInterface = (ifaceName: string, queryListBuilder: (type: string, canBeDraft: boolean) => string): IGatsbyNodeConfig[] => {
         const iface = schema.getType(ifaceName) as GraphQLAbstractType;
 
         return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
             remoteTypeName: type.name,
-            queries: queryListBuilder(type.name),
+            queries: queryListBuilder(type.name, type.hasOwnProperty('sourceId')),
         }));
     }
 
@@ -144,14 +144,15 @@ async function getGatsbyNodeTypes() {
      * Fragment definition helper
      * @param string typeName
      */
-    const fragmentHelper = (typeName: string): { fragmentName: string, fragment: string } => {
+    const fragmentHelper = (typeName: string, canBeDraft: boolean): { fragmentName: string, fragment: string } => {
         const fragmentName = '_Craft' + typeName + 'ID_';
+        const idProperty = canBeDraft ? 'sourceId' : 'id';
         return {
             fragmentName: fragmentName,
             fragment: `
             fragment ${fragmentName} on ${typeName} {
                 __typename
-                id
+                ${idProperty}
             }
             `
         };
@@ -162,9 +163,9 @@ async function getGatsbyNodeTypes() {
     // For all the mapped queries
     for (let [interfaceName, sourceNodeInformation] of Object.entries(queryMap)) {
         // extract all the different types for the interfaces
-        gatsbyNodeTypes.push(...extractNodesFromInterface(interfaceName, (typeName) => {
+        gatsbyNodeTypes.push(...extractNodesFromInterface(interfaceName, (typeName, canBeDraft) => {
             let queries = '';
-            let fragmentInfo = fragmentHelper(typeName);
+            let fragmentInfo = fragmentHelper(typeName, canBeDraft);
 
             queries = fragmentInfo.fragment;
 

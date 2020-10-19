@@ -76,7 +76,7 @@ async function getGatsbyNodeTypes() {
         const iface = schema.getType(ifaceName);
         return !iface ? [] : schema.getPossibleTypes(iface).map(type => ({
             remoteTypeName: type.name,
-            queries: queryListBuilder(type.name),
+            queries: queryListBuilder(type.name, type.hasOwnProperty('sourceId')),
         }));
     };
     // prettier-ignore
@@ -84,14 +84,15 @@ async function getGatsbyNodeTypes() {
      * Fragment definition helper
      * @param string typeName
      */
-    const fragmentHelper = (typeName) => {
+    const fragmentHelper = (typeName, canBeDraft) => {
         const fragmentName = '_Craft' + typeName + 'ID_';
+        const idProperty = canBeDraft ? 'sourceId' : 'id';
         return {
             fragmentName: fragmentName,
             fragment: `
             fragment ${fragmentName} on ${typeName} {
                 __typename
-                id
+                ${idProperty}
             }
             `
         };
@@ -100,9 +101,9 @@ async function getGatsbyNodeTypes() {
     // For all the mapped queries
     for (let [interfaceName, sourceNodeInformation] of Object.entries(queryMap)) {
         // extract all the different types for the interfaces
-        gatsbyNodeTypes.push(...extractNodesFromInterface(interfaceName, (typeName) => {
+        gatsbyNodeTypes.push(...extractNodesFromInterface(interfaceName, (typeName, canBeDraft) => {
             let queries = '';
-            let fragmentInfo = fragmentHelper(typeName);
+            let fragmentInfo = fragmentHelper(typeName, canBeDraft);
             queries = fragmentInfo.fragment;
             // and define queries for the concrete type
             if (sourceNodeInformation.node) {
@@ -176,7 +177,6 @@ async function execute(operation) {
     if (previewToken) {
         headers['X-Craft-Token'] = previewToken;
     }
-
     const res = await fetch(craftGqlUrl, {
         method: "POST",
         body: JSON.stringify({ query, variables, operationName }),

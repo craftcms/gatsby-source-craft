@@ -55,7 +55,7 @@ const craftGqlUrl = process.env.CRAFTGQL_URL;
 const loadedPluginOptions: SourcePluginOptions = {
     concurrency: 10,
     debugDir: __dirname + "/.cache/craft-graphql-documents",
-    fragmentsDir: __dirname + "/src/craft-fragments",
+    fragmentsDir: __dirname + "/.cache/craft-fragments",
     typePrefix: "Craft"
 };
 

@@ -63,6 +63,7 @@ let schema: GraphQLSchema;
 let gatsbyNodeTypes: IGatsbyNodeConfig[];
 let sourcingConfig: ISourcingConfig & { verbose: boolean };
 let previewToken: string|null;
+let craftInterfaces: string[] = [];
 
 /**
  * Fetch the schema
@@ -123,6 +124,8 @@ async function getGatsbyNodeTypes() {
         if (nodeInformation.filterTypeExpression) {
             queryMap[nodeInformation.targetInterface].filterTypeExpression = nodeInformation.filterTypeExpression;
         }
+
+        craftInterfaces.push(nodeInformation.targetInterface);
     }
 
     /**
@@ -287,8 +290,22 @@ exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: Source
     await ensureFragmentsExist(gatsbyApi.reporter)
 }
 
-exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
+exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
     const config = await getSourcingConfig(gatsbyApi)
+    const { createTypes } = gatsbyApi.actions;
+
+    let typeDefs = '';
+
+    for (let craftInterface of craftInterfaces) {
+        typeDefs += `
+            interface ${loadedPluginOptions.typePrefix}${craftInterface} @nodeInterface { 
+                id: ID! 
+            }
+        `
+    }
+
+    createTypes(typeDefs);
+
     await createSchemaCustomization(config)
 }
 

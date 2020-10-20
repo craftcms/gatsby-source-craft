@@ -18,6 +18,7 @@ let schema;
 let gatsbyNodeTypes;
 let sourcingConfig;
 let previewToken;
+let craftInterfaces = [];
 /**
  * Fetch the schema
  */
@@ -66,6 +67,7 @@ async function getGatsbyNodeTypes() {
         if (nodeInformation.filterTypeExpression) {
             queryMap[nodeInformation.targetInterface].filterTypeExpression = nodeInformation.filterTypeExpression;
         }
+        craftInterfaces.push(nodeInformation.targetInterface);
     }
     /**
      * Helper function that extracts possible Gatsby nodes by interface name
@@ -204,8 +206,18 @@ exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
     // Make sure the fragments exist
     await ensureFragmentsExist(gatsbyApi.reporter);
 };
-exports.createSchemaCustomization = async (gatsbyApi, pluginOptions) => {
+exports.createSchemaCustomization = async (gatsbyApi) => {
     const config = await getSourcingConfig(gatsbyApi);
+    const { createTypes } = gatsbyApi.actions;
+    let typeDefs = '';
+    for (let craftInterface of craftInterfaces) {
+        typeDefs += `
+            interface ${loadedPluginOptions.typePrefix}${craftInterface} @nodeInterface { 
+                id: ID! 
+            }
+        `;
+    }
+    createTypes(typeDefs);
     await createSchemaCustomization(config);
 };
 // Source the actual Gatsby nodes

@@ -56,7 +56,7 @@ const loadedPluginOptions: SourcePluginOptions = {
     concurrency: 10,
     debugDir: __dirname + "/.cache/craft-graphql-documents",
     fragmentsDir: __dirname + "/.cache/craft-fragments",
-    typePrefix: "Craft"
+    typePrefix: "Craft_",
 };
 
 let schema: GraphQLSchema;

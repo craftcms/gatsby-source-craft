@@ -14,6 +14,9 @@ const loadedPluginOptions = {
     fragmentsDir: __dirname + "/.cache/craft-fragments",
     typePrefix: "Craft_",
 };
+const mandatoryFragments = {
+    ensureRemoteId: 'fragment RequiredEntryFields on EntryInterface { id }'
+};
 let schema;
 let gatsbyNodeTypes;
 let sourcingConfig;
@@ -340,5 +343,14 @@ async function ensureFragmentsExist(reporter) {
     }
     else {
         reporter.info(fragments.length + " fragments found, skipping writing default fragments");
+    }
+    // Check for missing mandatory fragments
+    for (let [fragmentName, fragmentBody] of Object.entries(mandatoryFragments)) {
+        fragmentName += '.graphql';
+        if (!fragments.includes(fragmentName)) {
+            reporter.info(`"${fragmentName}" is missing, writing to the fragment folder.`);
+            const filePath = path.join(fragmentDir, fragmentName);
+            fs.writeFile(filePath, fragmentBody);
+        }
     }
 }

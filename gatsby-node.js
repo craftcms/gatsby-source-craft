@@ -13,6 +13,7 @@ const loadedPluginOptions = {
     debugDir: __dirname + "/.cache/craft-graphql-documents",
     fragmentsDir: __dirname + "/.cache/craft-fragments",
     typePrefix: "Craft_",
+    looseInterfaces: false
 };
 const mandatoryFragments = {
     ensureRemoteId: 'fragment RequiredEntryFields on EntryInterface { id }'
@@ -22,6 +23,7 @@ let gatsbyNodeTypes;
 let sourcingConfig;
 let previewToken;
 let craftInterfaces = [];
+let craftTypesByInterface = {};
 /**
  * Fetch the schema
  */
@@ -83,6 +85,12 @@ async function getGatsbyNodeTypes() {
             return typeof input === 'object' && input !== null && '_fields' in input && 'sourceId' in input.getFields();
         };
         return !iface ? [] : schema.getPossibleTypes(iface).map(type => {
+            if (craftTypesByInterface[ifaceName]) {
+                craftTypesByInterface[ifaceName].push(type);
+            }
+            else {
+                craftTypesByInterface[ifaceName] = [type];
+            }
             return ({
                 remoteTypeName: type.name,
                 queries: queryListBuilder(type.name, canBeDraft(type)),
@@ -197,12 +205,13 @@ async function execute(operation) {
     return await res.json();
 }
 exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     // Set all the config settings pre-bootstrap
     loadedPluginOptions.concurrency = (_a = pluginOptions.concurrency) !== null && _a !== void 0 ? _a : loadedPluginOptions.concurrency;
     loadedPluginOptions.debugDir = (_b = pluginOptions.debugDir) !== null && _b !== void 0 ? _b : loadedPluginOptions.debugDir;
     loadedPluginOptions.fragmentsDir = (_c = pluginOptions.fragmentsDir) !== null && _c !== void 0 ? _c : loadedPluginOptions.fragmentsDir;
     loadedPluginOptions.typePrefix = (_d = pluginOptions.typePrefix) !== null && _d !== void 0 ? _d : loadedPluginOptions.typePrefix;
+    loadedPluginOptions.looseInterfaces = (_e = pluginOptions.looseInterfaces) !== null && _e !== void 0 ? _e : loadedPluginOptions.looseInterfaces;
     // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir);
     await fs.ensureDir(loadedPluginOptions.fragmentsDir);
@@ -214,10 +223,42 @@ exports.createSchemaCustomization = async (gatsbyApi) => {
     const { createTypes } = gatsbyApi.actions;
     let typeDefs = '';
     for (let craftInterface of craftInterfaces) {
+        let extraFields = {};
+        let extraFieldsAsString = '';
+        let redefineTypes = '';
+        if (loadedPluginOptions.looseInterfaces && craftTypesByInterface[craftInterface]) {
+            // Collect all fields across all implementations of the interface
+            for (let gqlType of craftTypesByInterface[craftInterface]) {
+                for (let [fieldName, field] of Object.entries(gqlType.getFields())) {
+                    if (fieldName !== 'id' && fieldName.charAt(0) !== '_') {
+                        let fieldType = field.type.toString();
+                        if (fieldType.match(/(Int|Float|String|Boolean|ID)(\]|!\]|$)/) && fieldType.charAt(-1) !== '!') {
+                            extraFields[fieldName] = fieldType;
+                        }
+                    }
+                }
+            }
+            // Combine into one large field-defining-string
+            for (let [fieldName, fieldType] of Object.entries(extraFields)) {
+                extraFieldsAsString += `${fieldName}: ${fieldType}
+                `;
+            }
+            // And now redefine all the implementations to have all the fields.
+            for (let gqlType of craftTypesByInterface[craftInterface]) {
+                redefineTypes += `type ${loadedPluginOptions.typePrefix}${gqlType.name} {
+                    id: ID!
+                    ${extraFieldsAsString}
+                }
+                `;
+            }
+        }
         typeDefs += `
             interface ${loadedPluginOptions.typePrefix}${craftInterface} @nodeInterface { 
-                id: ID! 
+                id: ID!
+                ${extraFieldsAsString}
             }
+            
+            ${redefineTypes}
         `;
     }
     createTypes(typeDefs);

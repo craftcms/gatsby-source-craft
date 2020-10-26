@@ -303,15 +303,24 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
         let extraFields: {[key: string]: string} = {};
         let extraFieldsAsString = '';
         let redefineTypes = '';
+        const skippedTypes = ['id', 'parent', 'children', 'next', 'prev'];
 
         if (loadedPluginOptions.looseInterfaces && craftTypesByInterface[craftInterface]) {
             // Collect all fields across all implementations of the interface
             for (let gqlType of craftTypesByInterface[craftInterface]) {
                 for (let [fieldName, field] of Object.entries(gqlType.getFields())) {
-                    if (fieldName !== 'id' && fieldName.charAt(0) !== '_') {
-                        let fieldType = field.type.toString();
-                        if (fieldType.match(/(Int|Float|String|Boolean|ID)(\]|!\]|$)/) && fieldType.charAt(-1) !== '!') {
+                    if (!skippedTypes.includes(fieldName) && fieldName.charAt(0) !== '_') {
+                        // Convert Craft's DateTime to Gatsby's Date.
+                        let fieldType = field.type.toString().replace(/DateTime/, 'JSON');
+
+                        if (fieldType.charAt(-1) == '!') {
+                            continue;
+                        }
+
+                        if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!\]|$)/)) {
                             extraFields[fieldName] = fieldType;
+                        } else {
+                            extraFields[fieldName] = fieldType.replace(/^([^a-z]+)?([a-z_]+)([^a-z]+)?$/i, '$1' + loadedPluginOptions.typePrefix + '$2$3');
                         }
                     }
                 }

@@ -1,5 +1,5 @@
 import {GraphQLSchema} from "graphql";
-import {GraphQLAbstractType, GraphQLObjectType} from "graphql/type/definition";
+import {GraphQLAbstractType, GraphQLField, GraphQLInterfaceType, GraphQLObjectType} from "graphql/type/definition";
 import {IGatsbyNodeConfig, IGatsbyNodeDefinition, ISourcingConfig} from "gatsby-graphql-source-toolkit/dist/types";
 import {NodePluginArgs, Reporter} from "gatsby";
 
@@ -60,6 +60,7 @@ let sourcingConfig: ISourcingConfig & { verbose: boolean };
 let previewToken: string|null;
 let craftInterfaces: string[] = [];
 let craftTypesByInterface: { [key: string]: [GraphQLObjectType] } = {};
+let craftFieldsByInterface: { [key: string]: [GraphQLField<any, any>] } = {};
 
 /**
  * Fetch the schema
@@ -130,13 +131,25 @@ async function getGatsbyNodeTypes() {
      * @param callable queryListBuilder
      */
     const extractNodesFromInterface = (ifaceName: string, queryListBuilder: (type: string, canBeDraft: boolean) => string): IGatsbyNodeConfig[] => {
-        const iface = schema.getType(ifaceName) as GraphQLAbstractType;
+        const iface = schema.getType(ifaceName) as GraphQLInterfaceType;
+
+        if (!iface) {
+            return [];
+        }
+
+        for (let field of Object.values(iface.getFields())) {
+            if (craftFieldsByInterface[ifaceName]) {
+                craftFieldsByInterface[ifaceName].push(field);
+            } else {
+                craftFieldsByInterface[ifaceName] = [field];
+            }
+        }
 
         const canBeDraft = (input: unknown): boolean => {
             return typeof input === 'object' && input !== null && '_fields' in input && 'sourceId' in (input as GraphQLObjectType).getFields();
         }
 
-        return !iface ? [] : schema.getPossibleTypes(iface).map(type => {
+        return schema.getPossibleTypes(iface).map(type => {
             if (craftTypesByInterface[ifaceName]) {
                 craftTypesByInterface[ifaceName].push(type);
             } else {
@@ -307,25 +320,51 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
         let extraFields: {[key: string]: string} = {};
         let extraFieldsAsString = '';
         let redefineTypes = '';
-        const skippedTypes = ['id', 'parent', 'children', 'next', 'prev'];
 
-        if (loadedPluginOptions.looseInterfaces && craftTypesByInterface[craftInterface]) {
-            // Collect all fields across all implementations of the interface
-            for (let gqlType of craftTypesByInterface[craftInterface]) {
-                for (let [fieldName, field] of Object.entries(gqlType.getFields())) {
-                    if (!skippedTypes.includes(fieldName) && fieldName.charAt(0) !== '_') {
-                        // Convert Craft's DateTime to Gatsby's Date.
-                        let fieldType = field.type.toString().replace(/DateTime/, 'JSON');
+        const extractFieldType = (field: GraphQLField<any, any>, onlyNullable: boolean): string|false => {
+            const fieldName = field.name;
+            const skippedTypes = ['id', 'parent', 'children', 'next', 'prev'];
 
-                        if (fieldType.charAt(-1) == '!') {
-                            continue;
+            // If skipped type or begins with an underscore
+            if (skippedTypes.includes(fieldName) || fieldName.charAt(0) === '_') {
+                return false;
+            }
+
+            let fieldType = field.type.toString();
+
+            // If only nullable and is non-nullable
+            if (onlyNullable && fieldType.charAt(-1) == '!') {
+                return false;
+            }
+
+            // Convert Craft's DateTime to Gatsby's Date.
+            fieldType = fieldType.replace(/DateTime/, 'JSON');
+
+            if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!\]|$)/)) {
+                return fieldType;
+            }
+
+            return fieldType.replace(/^([^a-z]+)?([a-z_]+)([^a-z]+)?$/i, '$1' + loadedPluginOptions.typePrefix + '$2$3');
+        }
+
+        if (craftTypesByInterface[craftInterface]) {
+            if (loadedPluginOptions.looseInterfaces) {
+                // Collect all fields across all implementations of the interface
+                for (let gqlType of craftTypesByInterface[craftInterface]) {
+                    for (let field of Object.values(gqlType.getFields())) {
+                        let extractedType = extractFieldType(field, true);
+
+                        if (extractedType) {
+                            extraFields[field.name] = extractedType;
                         }
+                    }
+                }
+            } else if (craftFieldsByInterface[craftInterface]) {
+                for (let field of Object.values(craftFieldsByInterface[craftInterface])) {
+                    let extractedType = extractFieldType(field, false);
 
-                        if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!\]|$)/)) {
-                            extraFields[fieldName] = fieldType;
-                        } else {
-                            extraFields[fieldName] = fieldType.replace(/^([^a-z]+)?([a-z_]+)([^a-z]+)?$/i, '$1' + loadedPluginOptions.typePrefix + '$2$3');
-                        }
+                    if (extractedType) {
+                        extraFields[field.name] = extractedType;
                     }
                 }
             }
@@ -333,19 +372,19 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
             // Combine into one large field-defining-string
             for (let [fieldName, fieldType] of Object.entries(extraFields)) {
                 extraFieldsAsString += `${fieldName}: ${fieldType}
-                `;
+            `;
             }
 
             // And now redefine all the implementations to have all the fields.
             for (let gqlType of craftTypesByInterface[craftInterface]) {
                 redefineTypes += `type ${loadedPluginOptions.typePrefix}${gqlType.name} {
-                    id: ID!
-                    ${extraFieldsAsString}
-                }
-                `;
+                id: ID!
+                ${extraFieldsAsString}
             }
-
+            `;
+            }
         }
+
 
         typeDefs += `
             interface ${loadedPluginOptions.typePrefix}${craftInterface} @nodeInterface { 

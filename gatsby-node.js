@@ -128,15 +128,16 @@ async function getGatsbyNodeTypes() {
                 queries += `query NODE_${typeName} { ${sourceNodeInformation.node}(id: $id) { ... ${fragmentInfo.fragmentName}  } }
                 `;
             }
+            let typeFilter = '';
             if (sourceNodeInformation.filterArgument) {
                 let regexp = new RegExp(sourceNodeInformation.filterTypeExpression);
                 const matches = typeName.match(regexp);
                 if (matches && matches[1]) {
-                    let typeFilter = sourceNodeInformation.filterArgument + ': "' + matches[1] + '"';
-                    queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
-                    `;
+                    typeFilter = sourceNodeInformation.filterArgument + ': "' + matches[1] + '"';
                 }
             }
+            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
+            `;
             return queries;
         }));
     }

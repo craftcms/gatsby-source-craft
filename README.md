@@ -78,7 +78,7 @@ You may optionally override any of the default [configuration options](#configur
 
 ### 3. Confirm Success
 
-Run `gatsby develop` and you should be able to watch Gatsby source the entire Craft CMS schema successfully and browse it via http://localhost:8000/___graphql. Once everything’s cached on this first run, subsequent builds will apply delta changes and be much faster. (If Craft’s project config is changed or you run `gatsby clean`, the entire site will be sourced again.)
+Run `gatsby develop` and you should be able to watch Gatsby source the entire Craft CMS schema. When it’s finished, you should be able to query your Craft content running http://localhost:8000/___graphql.
 
 Now you’re ready to [query Craft CMS content](#fetching-craft-content) and build a blazing-fast Gatsby front end!
 
@@ -278,6 +278,8 @@ Gatsby sites are built by querying source nodes and processing the results.
 If you’re new to Gatsby, be sure to read up on how to [build a site using source plugins](https://www.gatsbyjs.com/tutorial/part-five/).
 
 Once data from *any* source, including Craft CMS, is converted into Gatsby data nodes, you’ll query those data nodes against Gatsby’s internal storage rather than the originating source. In this case that means the GraphQL queries you write in your Gatsby components will query Gatsby’s data nodes and not the Craft CMS GraphQL API.
+
+Once everything’s cached on this first run, subsequent builds will apply delta changes and be much faster. (If Craft’s project config is changed or you run `gatsby clean`, the entire site will be sourced again.)
 
 #### Applying Directives and Craft-Specific Filtering
 

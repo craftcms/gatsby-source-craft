@@ -116,7 +116,7 @@ If you’re new to Gatsby, this is a vital and potentially confusing distinction
 
 The examples that follow assume you’re using the default `Craft_` type prefix. If you’ve specified a different one, like `Foo_` for example, the types in your queries would change slightly.
 
-| `Craft_` prefix         | `Foo_` prefix         |
+| `typePrefix: 'Craft_'`  | `typePrefix: 'Foo_'`  |
 | ----------------------- | --------------------- |
 | `Craft_blog_blog_Entry` | `Foo_blog_blog_Entry`
 | `allCraftBlogBlogEntry` | `allFooBlogBlogEntry`

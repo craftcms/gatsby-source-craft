@@ -162,7 +162,7 @@ You’ll be able to query content to get either a single object or several of th
     }
   }
 }
-# multiple entry title with custom *blog* field value
+# single entry title with custom *blog* field value
 {
   craftEntryInterface {
     title

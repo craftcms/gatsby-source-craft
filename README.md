@@ -90,7 +90,7 @@ Craft’s flexible content schema is accessible to its front-end templates via [
 
 <img src="graphql-diagram.png" alt="Diagram of Craft CMS via source plugin to private Gatsby GraphQL">
 
-Gatsby uses source plugins like this to combine content from any number of sources (local markdown, REST and GraphQL APIs, etc.) and make it all available in a single, consistent GraphQL API that can be used to build a [React](https://reactjs.org/)-based front end.
+Gatsby uses source plugins like this to collect content from any number of sources (local markdown, REST and GraphQL APIs, etc.) and combine them in a single, consistent GraphQL API that can be used to build a [React](https://reactjs.org/)-based front end.
 
 If you’re a hands-on learner, the quickest way to appreciate the difference between these GraphQL APIs is to see each in action. Open GraphiQL from the Craft control panel and run `gatsby develop` before visiting http://localhost:8000/___graphql. Gatsby’s GraphQL API is the one you’ll query when building your Gatsby site.
 

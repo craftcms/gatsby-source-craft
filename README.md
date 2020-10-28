@@ -82,11 +82,9 @@ Run `gatsby develop` and you should be able to watch Gatsby source the entire Cr
 
 Now you’re ready to [query Craft CMS content](#fetching-craft-content) and build a blazing-fast Gatsby front end!
 
-> 💡 Tip: take a look at the [Craft CMS Blog Starter](https://github.com/craftcms/starter-blog) if you’d like to see an example Craft+Gatsby integration that uses this source plugin.
-
 ## Overview
 
-Craft’s flexible content schema is accessible to its front-end templates via [Element Queries](https://craftcms.com/docs/3.x/element-queries.html) and a similar public GraphQL API. This Gatsby source plugin, combined with its companion Craft CMS plugin, translates your Craft project’s schema into one ideal for Gatsby’s own internal GraphQL API.
+Craft’s flexible content schema is accessible front ends via [Element Queries](https://craftcms.com/docs/3.x/element-queries.html) and a similar public GraphQL API. This Gatsby source plugin, combined with its companion Craft CMS plugin, translates your Craft project schema specifically for Gatsby’s internal GraphQL API.
 
 <img src="graphql-diagram.png" alt="Diagram of Craft CMS via source plugin to private Gatsby GraphQL">
 
@@ -94,7 +92,9 @@ Gatsby uses source plugins like this to collect content from any number of sourc
 
 If you’re a hands-on learner, the quickest way to appreciate the difference between these GraphQL APIs is to see each in action. Open GraphiQL from the Craft control panel and run `gatsby develop` before visiting http://localhost:8000/___graphql. Gatsby’s GraphQL API is the one you’ll query when building your Gatsby site.
 
-If you’re a learn-by-reading type and you’re new to Craft CMS, you may first want to look at Craft’s [GraphQL API](https://craftcms.com/docs/3.x/graphql.html) see how you’d fetch content directly. It’ll probably help make sense of the schema available to Gatsby. If you’re new to Gatsby, the [Tutorials](https://www.gatsbyjs.com/tutorial/) offer an excellent place to learn the basics.
+If you’re a learn-by-reading type that’s new to Craft CMS, you may first want to look at Craft’s [GraphQL API](https://craftcms.com/docs/3.x/graphql.html) see how you’d fetch content directly. It’ll probably help make sense of the schema available to Gatsby. If you’re new to Gatsby, the [Gatsby Tutorials](https://www.gatsbyjs.com/tutorial/) offer an excellent start with the basics.
+
+> 💡 Tip: take a look at the [Craft CMS Blog Starter](https://github.com/craftcms/starter-blog) if you’d like to see an example Craft+Gatsby integration that uses this source plugin.
 
 ## Usage
 

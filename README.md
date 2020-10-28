@@ -233,15 +233,52 @@ When `looseInterfaces` is enabled, the source plugin will add all fields to the 
 
 If your objects are books, bicycles, and birds, you’ve probably customized fields/properties that make immediate sense with `looseInterfaces` disabled:
 
-- **books** have a cover, page count, ISBN, and price
-- **bicycles** have a number of gears, brake types, and price
-- **birds** have a beak shape and nesting location
+- **books**
+  - cover
+  - pageCount
+  - isbn
+  - price
+- **bicycles**
+  - numGears
+  - brakeType
+  - price
+- **birds**
+  - beakShape
+  - nestingLocation
 
 As you encounter each type via the GraphQL API, you’ll see those properties as they’re presented above—but when querying generic content types you’ll only be able to limit your search by books, bicycles, and/or birds.
 
 With `looseInterfaces` enabled, each result object will list the properties available across *all* types. The benefit is you can further limit the query scope by a more specific property. You might search all objects by price, for example, and end up with books and bicycles as results.
 
-The downside is that each result may be more confusing to look at. Birds will have brake types, bicycles will have nesting locations, and books will have beak shapes. The content itself does not change, and the values of each of these irrelevant fields would simply be `null`. But each type would include every other type’s properties.
+- **books**
+  - cover
+  - pageCount
+  - isbn
+  - price
+  - numGears
+  - brakeType
+  - beakShape
+  - nestingLocation
+- **bicycles**
+  - cover
+  - pageCount
+  - isbn
+  - price
+  - numGears
+  - brakeType
+  - beakShape
+  - nestingLocation
+- **birds**
+  - cover
+  - pageCount
+  - isbn
+  - price
+  - numGears
+  - brakeType
+  - beakShape
+  - nestingLocation
+
+The downside is that each result may be more confusing to look at. Birds will have brake types, bicycles will have nesting locations, and books will have beak shapes—which does not reflect the nature of reality. The actual content does not change and the value of each irrelevant field would be `null`, but each type would include every other type’s properties.
 
 > ⚠️ Filtering by a non-existent field [can result in unexpected behavior](https://www.gatsbyjs.com/docs/query-filters/#nulls-and-partial-paths). Make sure your other filter fields narrow the results down to a set of results that actually implement the field you’re filtering against.
 

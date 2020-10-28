@@ -313,30 +313,31 @@ Most Gatsby-Craft sites were likely built with the [`gatsby-source-graphql` plug
 1. Because every GraphQL query is executed at build time, builds could be slow particularly with larger sites.
 2. Every build is all-or-nothing, with no ability to partially source schema changes.
 
-This Craft CMS Gatsby source plugin is tailored for optimal utilization of Craft’s content schema. It first sources *all* the data from the Craft site via its native GraphQL API, then converts everything into Gatsby data nodes.
+This Craft CMS Gatsby source plugin is tailored for optimal utilization of Craft’s content schema. It first sources *all* the data from the Craft site via its native GraphQL API, then converts everything into Gatsby data nodes. The complete schema is sourced into locally-cached fragments that speed up subsequent builds, so only schema *changes* need to be queried and sourced.
 
-TODO: tips for updating queries
+If you’re migrating a Gatsby project from the GraphQL source plugin to this Craft CMS source plugin, you’ll need to adjust your configuration and make some changes to your queries. They should generally be cleaner and slightly more concise:
 
-- note `allCraft*` and `craft*` pattern
-- wrap `nodes`
-- fix `search` hacks
-- note `id` and `remoteId`
-- declare type for user details
-- types from snake case (`blog_blog_Entry`) to camelCase (`BlogBlogEntry`)
+- Queries will no longer need to be wrapped by the source handle. (`query { craft {} }` → `query {}`.)
+- Multi-object queries will take the form of `allCraft*`, while single-object queries will start with `craft*` and no longer need to specify a type when a single section/entry type is queried.
+- Queries for multiple objects (like `allCraft*`) will return results in a `nodes` array.
+- Craft’s [`search`](https://craftcms.com/docs/3.x/searching.html) parameter is no longer available as a filter. It was a convenient hack for querying specific field values and relationships, both of which may be done more cleanly using this source plugin.
+- References to any element’s `id` should be `remoteId` instead.
+- Any user details, like entry author information, must be wrapped with `... on Craft_User {}`.
+- Various casing will need to change, often from snake case (`blog_blog_Entry`) to camelCase (`BlogBlogEntry`). Only fragments continue to use snake case, like `... on Craft_blog_blog_Entry {}`.
 
 ### Legacy `gatsby-source-craftcms`
 
-The [original Craft CMS source plugin](https://github.com/gusnips/gatsby-source-craftcms) was superseded by `gatsby-source-graphql`. Despite having the same name, this Gatsby source plugin is built and maintained directly by the Craft CMS team.
+The [original Craft CMS source plugin](https://github.com/gusnips/gatsby-source-craftcms) was superseded by [`gatsby-source-graphql`](#gatsby-source-graphql). Despite having the same name, this Gatsby source plugin is built and maintained directly by the Craft CMS team.
 
 ## Troubleshooting
 
-### Changes in Craft schema not showing up
+### Gatsby doesn’t see Craft schema changes.
 
-When you add new fields, you have to keep in mind, that Gatsby will pull in only the content it is told to query - namely, whatever is specified in the GraphQL fragments. You either have to add the new fields to the already-existing fragments ir you can simply clear out the fragment folder so that Gatsby regerenates them on the next run.
+When you add new fields, you have to keep in mind, that Gatsby will pull in only the content it is told to query - namely, whatever is specified in the GraphQL fragments. You either have to add the new fields to the already-existing fragments or you can simply clear out the fragment folder so that Gatsby regenerates them on the next run.
 
-### Incomplete content updates on subsequent Gatsby runs
+### Subsequent Gatsby builds have incomplete content.
 
-When you run Gatsby subsequently, if Gatsby caches have not been cleaned out, Gatsby will only query Craft for any changes _since_ the last time Gatsby queried for content. This is called incremental sourcing and it helps reduce the data transferred between Gatsby and Craft. It also helps Gatsby re-build its data node store.
+When you run Gatsby subsequently, if Gatsby caches have not been cleaned out, Gatsby will only query Craft for changes since the last time Gatsby queried for content. This is called incremental sourcing and it helps reduce the data transferred between Gatsby and Craft. It also helps Gatsby re-build its data node store.
 
 As new data is pulled in, though, Gatsby might not know all the relations made by Craft and also which relations might be used when building the site. (See the [related issue here](https://github.com/gatsbyjs/gatsby-graphql-toolkit/issues/18)). This means that sometimes incremental sourcing can make your site have some obsolete content. For this reason, it is recommended to do a full page build (by cleaning the Gatsby caches beforehand) before deploying the built site.
 

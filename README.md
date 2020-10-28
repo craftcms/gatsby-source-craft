@@ -239,9 +239,9 @@ If your objects are books, bicycles, and birds, you’ve probably customized fie
 
 As you encounter each type via the GraphQL API, you’ll see those properties as they’re presented above—but when querying generic content types you’ll only be able to limit your search by books, bicycles, and/or birds.
 
-With `looseInterfaces` enabled, the content ultimately available doesn’t change. You can, however, further limit the query scope by a more specific property like price—possibly ending up with books and bicycles as results.
+With `looseInterfaces` enabled, each result object will list the properties available across *all* types. The benefit is you can further limit the query scope by a more specific property. You might search all objects by price, for example, and end up with books and bicycles as results.
 
-The downside to this is that each type will list *all* properties across types. So birds will have brake types, books wil have nesting locations, and books will have beak shapes. The values of each of those fields would simply be `null`, but each type would include every other type’s properties.
+The downside is that each result may be more confusing to look at. Birds will have brake types, bicycles will have nesting locations, and books will have beak shapes. The content itself does not change, and the values of each of these irrelevant fields would simply be `null`. But each type would include every other type’s properties.
 
 > ⚠️ Filtering by a non-existent field [can result in unexpected behavior](https://www.gatsbyjs.com/docs/query-filters/#nulls-and-partial-paths). Make sure your other filter fields narrow the results down to a set of results that actually implement the field you’re filtering against.
 

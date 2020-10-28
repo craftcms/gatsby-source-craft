@@ -284,10 +284,9 @@ The downside is that each result may be more confusing to look at. Birds will ha
 
 ### Live Preview
 
-TODO: link to Craft live preview docs (and match case)
+In order to support [live preview targets](https://craftcms.com/docs/3.x/entries.html#preview-targets) for Craft content editors, Gatsby must be running in development mode and the Craft CMS Gatsby plugin must be configured with the Gatsby development server’s URL.
 
-To enable Live Preview using Gatsby, you need to have Gatsby running in development mode, as well as the development server address needs to be configured in the Craft plugin.
-
+TODO: detail setup steps
 TODO: suggest Live Preview setup for production
 
 > ⚠️ Gatsby does not support rendering a page on its own - when you save a draft during the live preview, Gatsby rebuilds the entire site using the draft instead of the entry itself. Craft does its best to tell Gatsby when to rebuild the site again without using the draft, but it is possible that a site remains built with a draft instead of the published entry.

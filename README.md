@@ -29,7 +29,7 @@ It requires for the corresponding [Gatsby Craft plugin](https://github.com/craft
 
 ## Requirements
 
-- Craft CMS instance running with the [Gatsby Craft plugin](https://github.com/craftcms/craft-gatsby) installed and configured. (Grab the GraphQL token and endpoint URL.)
+- Craft CMS instance running with the [Gatsby Craft plugin](https://github.com/craftcms/craft-gatsby) installed and configured.
 - Gatsby project you can work with locally.
 
 ## Quick Start

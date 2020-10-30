@@ -50,6 +50,7 @@ const loadedPluginOptions: SourcePluginOptions = {
     looseInterfaces: false
 };
 
+const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
 const mandatoryFragments = {
     ensureRemoteId: 'fragment RequiredEntryFields on EntryInterface { id }'
 }
@@ -230,12 +231,46 @@ async function writeDefaultFragments() {
         gatsbyNodeTypes: await getGatsbyNodeTypes(),
     })
 
-    for (const [remoteTypeName, fragment] of defaultFragments) {
-        const filePath = path.join(loadedPluginOptions.fragmentsDir, `${remoteTypeName}.graphql`)
+    await fs.ensureDir(internalFragmentDir)
 
+    for (const [remoteTypeName, fragment] of defaultFragments) {
+        const filePath = path.join(internalFragmentDir, `${remoteTypeName}.graphql`)
         if (!fs.existsSync(filePath)) {
             await fs.writeFile(filePath, fragment)
         }
+    }
+}
+
+async function addExtraFragments (reporter: Reporter) {
+    const fragmentDir = loadedPluginOptions.fragmentsDir;
+    const fragments = await fs.readdir(fragmentDir);
+
+    // Add mandatory fragments
+    for (let [fragmentName, fragmentBody] of Object.entries(mandatoryFragments)) {
+        fragmentName += '.graphql';
+        const filePath = path.join(internalFragmentDir, fragmentName);
+        fs.writeFile(filePath, fragmentBody);
+    }
+
+    reporter.info("Found " + fragments.length + " additional fragments")
+
+    // Look at the configured folder
+    // Otherwise, copy it to the internal folder, maybe overwriting a default fragment
+    for (const fragmentFile of fragments) {
+        const extraFile = path.join(fragmentDir, fragmentFile);
+        const existingFile = path.join(internalFragmentDir, fragmentFile);
+
+        const stats = fs.statSync(extraFile)
+        const fileSizeInBytes = stats["size"]
+
+        if (fs.existsSync(existingFile)) {
+            reporter.info("Overwriting the " + fragmentFile + " fragment")
+        } else {
+            reporter.info("Adding " + fragmentFile + " to additional fragments")
+        }
+
+        fs.copyFileSync(extraFile, existingFile);
+
     }
 }
 
@@ -244,9 +279,9 @@ async function writeDefaultFragments() {
  */
 async function collectFragments() {
     const customFragments = []
-    for (const fileName of await fs.readdir(loadedPluginOptions.fragmentsDir)) {
+    for (const fileName of await fs.readdir(internalFragmentDir)) {
         if (/.graphql$/.test(fileName)) {
-            const filePath = path.join(loadedPluginOptions.fragmentsDir, fileName)
+            const filePath = path.join(internalFragmentDir, fileName)
             const fragment = await fs.readFile(filePath)
             customFragments.push(fragment.toString())
         }
@@ -532,24 +567,10 @@ async function getSourcingConfig(gatsbyApi: NodePluginArgs) {
 }
 
 async function ensureFragmentsExist(reporter: Reporter) {
-    const fragmentDir = loadedPluginOptions.fragmentsDir;
-    const fragments = await fs.readdir(fragmentDir);
+    reporter.info("Clearing previous fragments.");
+    await fs.remove(internalFragmentDir, {recursive: true});
 
-    if (fragments.length == 0) {
-        reporter.info("No fragments found, writing default fragments.")
-        await writeDefaultFragments();
-    } else {
-        reporter.info(fragments.length + " fragments found, skipping writing default fragments")
-    }
-
-    // Check for missing mandatory fragments
-    for (let [fragmentName, fragmentBody] of Object.entries(mandatoryFragments)) {
-        fragmentName += '.graphql';
-
-        if (!fragments.includes(fragmentName)) {
-            reporter.info(`"${fragmentName}" is missing, writing to the fragment folder.`);
-            const filePath = path.join(fragmentDir, fragmentName);
-            fs.writeFile(filePath, fragmentBody);
-        }
-    }
+    reporter.info("Writing default fragments.");
+    await writeDefaultFragments();
+    await addExtraFragments(reporter);
 }

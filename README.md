@@ -231,16 +231,13 @@ Gatsby offers a nice tutorial on using GraphQL to build your site: https://www.g
 
 When `looseInterfaces` is enabled, the source plugin will add all fields to the GraphQL interfaces that are implemented by at least one of the GraphQL types. This allows for vastly more filterable queries to the detriment of clarity and readability for each specific type.
 
-If your objects are books, bicycles, and birds, you’ve probably customized fields/properties that make immediate sense with `looseInterfaces` disabled:
+For example: if your entries are books, bicycles, and birds, you’ve probably customized fields/properties that make immediate sense with `looseInterfaces` disabled:
 
 - **books**
-  - cover
-  - pageCount
   - isbn
   - price
 - **bicycles**
   - numGears
-  - brakeType
   - price
 - **birds**
   - beakShape
@@ -251,34 +248,27 @@ As you encounter each type via the GraphQL API, you’ll see those properties as
 With `looseInterfaces` enabled, each result object will list the properties available across *all* types. The benefit is you can further limit the query scope by a more specific property. You might search all objects by price, for example, and end up with books and bicycles as results.
 
 - **books**
-  - cover
-  - pageCount
   - isbn
   - price
   - numGears
-  - brakeType
   - beakShape
   - nestingLocation
 - **bicycles**
-  - cover
-  - pageCount
   - isbn
   - price
   - numGears
-  - brakeType
   - beakShape
   - nestingLocation
 - **birds**
-  - cover
-  - pageCount
   - isbn
   - price
   - numGears
-  - brakeType
   - beakShape
   - nestingLocation
 
-The downside is that each result may be more confusing to look at. Birds will have brake types, bicycles will have nesting locations, and books will have beak shapes—which does not reflect the nature of reality. The actual content does not change and the value of each irrelevant field would be `null`, but each type would include every other type’s properties.
+The downside is that each result may be more confusing to look at. Birds will have ISBNs, bicycles will have nesting locations, and books will have beak shapes—which does not reflect the nature of reality. The actual content does not change and the value of each irrelevant field would be `null`, but each type would include every other type’s properties.
+
+**This is only true for interfaces that share a specific type, not *all* interfaces in Craft’s schema.** In more practical terms, a normal section entry could have a misleading `structureId` property—but an asset would not.
 
 > ⚠️ Filtering by a non-existent field [can result in unexpected behavior](https://www.gatsbyjs.com/docs/query-filters/#nulls-and-partial-paths). Make sure your other filter fields narrow the results down to a set of results that actually implement the field you’re filtering against.
 
@@ -310,9 +300,9 @@ Once those fragments are generated, you can edit them down by hand to remove any
 
 Gatsby sites are built by querying source nodes and processing the results.
 
-If you’re new to Gatsby, be sure to read up on how to [build a site using source plugins](https://www.gatsbyjs.com/tutorial/part-five/).
+> 💡 If you’re new to Gatsby, be sure to read up on how to [build a site using source plugins](https://www.gatsbyjs.com/tutorial/part-five/).
 
-Once data from *any* source, including Craft CMS, is converted into Gatsby data nodes, you’ll query those data nodes against Gatsby’s internal storage rather than the originating source. In this case that means the GraphQL queries you write in your Gatsby components will query Gatsby’s data nodes and not the Craft CMS GraphQL API.
+Once data from *any* source, including Craft CMS, is converted into Gatsby data nodes, you’ll query those data nodes against Gatsby’s internal storage rather than the original source. The GraphQL queries you write in your Gatsby components will query Gatsby’s data nodes and not the Craft CMS GraphQL API.
 
 Once everything’s cached on this first run, subsequent builds will apply delta changes and be much faster. (If Craft’s project config is changed or you run `gatsby clean`, the entire site will be sourced again.)
 

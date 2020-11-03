@@ -118,9 +118,9 @@ The examples that follow assume you’re using the default `Craft_` type prefix.
 
 | `typePrefix: 'Craft_'`  | `typePrefix: 'Foo_'`  |
 | ----------------------- | --------------------- |
-| `Craft_blog_blog_Entry` | `Foo_blog_blog_Entry`
-| `allCraftBlogBlogEntry` | `allFooBlogBlogEntry`
-| `craftBlogBlogEntry`    | `fooBlogBlogEntry`
+| `Craft_blog_blog_Entry` | `Foo_blog_blog_Entry` |
+| `allCraftBlogBlogEntry` | `allFooBlogBlogEntry` |
+| `craftBlogBlogEntry`    | `fooBlogBlogEntry`    |
 
 You’ll be able to query content to get either a single object or several of them that are returned in a `nodes` array. You can narrow the kind of content you’d like in two different ways:
 
@@ -323,9 +323,6 @@ TODO: explain what directives are
 The most common scenario for adjusting the generated fragments is for creating custom fields or applying directives. Since directives are applied when Craft returns the data, they cannot be applied after Gatsby already has it. The same is true for applying filters that only Craft would know how to process.
 
 Using [image transforms](https://craftcms.com/docs/3.x/image-transforms.html), for example, would require generating them when sourcing the data. Here we’ve modified the custom `frontPageThumb` asset field to specifically return a URL for an image pre-cropped to 400 pixels square:
-
-TODO: should be `Craft_uploads_Asset` below? Trim down?
-TODO: are we referring to a generated+cached fragment? (not seeing them)
 
 ```graphql
 fragment uploads_Asset on uploads_Asset {

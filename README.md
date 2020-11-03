@@ -148,6 +148,9 @@ You’ll be able to query content to get either a single object or several of th
 }
 ```
 
+> 💡 **Why `BlogBlog` instead of `Blog`?**\
+The first `Blog` refers to the Craft section type while the second refers to the [entry type](https://craftcms.com/docs/3.x/entries.html#entry-types). Often there’s just a single entry type per section, but there *can* be many of them!
+
 **Generic content types** will be accessible via `allCraft<interfaceName>` and `craft<interfaceName>`. You’ll likely have, for example, `allCraftEntryInterface` and `craftEntryInterface`. These can fetch GraphQL objects that implement the Entry interface. In other words, entries that may exist in different sections and entry types.
 
 ```graphql

@@ -5,7 +5,7 @@
 
 This Gatsby source plugin provides an integration with [Craft CMS](https://craftcms.com). It uses Craft’s [GraphQL API](https://docs.craftcms.com/v3/graphql.html) to make content within Craft available to Gatsby-powered front ends.
 
-It requires for the corresponding [Gatsby Helper](https://github.com/craftcms/craft-gatsby) plugin to be installed on the Craft site.
+It requires for the corresponding [Gatsby Helper](https://github.com/craftcms/gatsby-helper) plugin to be installed on the Craft site.
 
 ---
 
@@ -29,7 +29,7 @@ It requires for the corresponding [Gatsby Helper](https://github.com/craftcms/cr
 
 ## Requirements
 
-- Craft CMS instance running with the [Gatsby Helper](https://github.com/craftcms/craft-gatsby) plugin installed and configured.
+- Craft CMS instance running with the [Gatsby Helper](https://github.com/craftcms/gatsby-helper) plugin installed and configured.
 - Gatsby project you can work with locally.
 
 ## Quick Start
@@ -274,11 +274,16 @@ The downside is that each result may be more confusing to look at. Birds will ha
 
 ### Live Preview
 
-In order to support [live preview targets](https://craftcms.com/docs/3.x/entries.html#preview-targets) for Craft content editors, Gatsby must be running in development mode and the Craft CMS Gatsby plugin must be configured with the Gatsby development server’s URL.
+In order to support [live preview targets](https://craftcms.com/docs/3.x/entries.html#preview-targets) for Craft content editors, Gatsby must be running in development mode and the Craft CMS Gatsby Helper must be configured with the Gatsby development server’s URL.
 
-TODO: detail setup steps
+1. In the Craft control panel, add a new live preview target that points to your desired Gatsby URL. (For example: `http://localhost:8000/blog/{slug}`. Leave **Refresh** un-checked.)
+2. In the Craft control panel, navigate to **Settings** → **Gatsby Helper** and be sure you’ve added your **Preview Server URL** pointing to your local Gatsby site. (Example: `http://localhost:8000`.)
+3. In your Gatsby project, edit `.env` to include `ENABLE_GATSBY_REFRESH_ENDPOINT = true`.
+4. Run or restart `gatsby develop`.
 
-> ⚠️ Gatsby does not support rendering a page on its own - when you save a draft during the live preview, Gatsby rebuilds the entire site using the draft instead of the entry itself. Craft does its best to tell Gatsby when to rebuild the site again without using the draft, but it is possible that a site remains built with a draft instead of the published entry.
+You should now be able to select your Gatsby preview target in live preview and see content updates automatically applied in the preview pane.
+
+> ⚠️ Gatsby does not support rendering a page on its own. When you save a draft during the live preview, Gatsby rebuilds the entire site using the draft instead of the entry itself. Craft does its best to tell Gatsby when to rebuild the site again without using the draft, but it is possible that a site remains built with a draft instead of the published entry.
 
 ### Customizing Builds
 

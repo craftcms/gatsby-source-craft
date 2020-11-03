@@ -1,5 +1,5 @@
 {
-  "name": "gatsby-source-craftcms",
+  "name": "gatsby-source-craft",
   "private": true,
   "description": "Craft CMS source plugin for Gatsby",
   "version": "0.1.0",

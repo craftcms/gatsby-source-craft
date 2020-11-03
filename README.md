@@ -376,4 +376,13 @@ When you run Gatsby subsequently, if Gatsby caches have not been cleaned out, Ga
 
 As new data is pulled in, though, Gatsby might not know all the relations made by Craft and also which relations might be used when building the site. (See the [related issue here](https://github.com/gatsbyjs/gatsby-graphql-toolkit/issues/18)). This means that sometimes incremental sourcing can make your site have some obsolete content. For this reason, it is recommended to do a full page build (by cleaning the Gatsby caches beforehand) before deploying the built site.
 
+## Resources
+
+We highly recommend you check out these resources as you’re getting started with Craft CMS and Gatsby:
+
+- **[Craft GraphQL Docs](https://craftcms.com/docs/3.x/graphql.html)** - official documentation for GraphQL setup and usage.
+- **[Intro to Craft CMS Tutorial](https://craftcms.com/docs/getting-started-tutorial/)** - best place to start if you’re new to Craft CMS.
+- **[Gatsby Tutorials](https://www.gatsbyjs.com/tutorial/)** - best place to start if you’re new to Gatsby.
+- **[Craft Discord](https://craftcms.com/discord)** – one of the most friendly and helpful Discords on the planet.
+- **[Craft Stack Exchange](http://craftcms.stackexchange.com/)** – community-run Q&A for Craft developers.
 

@@ -2,7 +2,7 @@
   "name": "gatsby-source-craft",
   "private": true,
   "description": "Craft CMS source plugin for Gatsby",
-  "version": "0.1.0",
+  "version": "1.0.0-beta.1",
   "license": "MIT",
   "scripts": {
     "build": "gatsby build",

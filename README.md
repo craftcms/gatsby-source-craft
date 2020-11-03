@@ -303,9 +303,35 @@ You can customize these sourced fragments in two ways:
 1. Appending your own fragments using included hooks.
 2. Directly editing those cached source fragments for full control.
 
-The first option doesn’t touch the sourced fragments and is easier if you only want to append your own properties and directives.
+Either way you’ll want to use the `fragmentsDir` config option to specify a path within your Gatsby project. Changes you make here will be copied into `node_modules/gatsby-source-craftcms/.cache/craft-fragments/`, overwriting anything that’s there. Keeping `fragmentsDir` separate ensures customizations won’t be lost when running `gatsby clean` and re-sourcing the Craft schema.
 
-The second option lets you take complete control of the sourced fragments, you’ll want to customize that directory because you’ll need to protect your changes from being lost when clearing and re-sourcing the site. This means you will not be able to easily re-source the schema and you’ll need to manually apply any changes yourself.
+**Appending Custom Fragments**
+
+To add your own fragments to the sourced schema, create a file ending in `.graphql` and add your custom fragment.
+
+If we set a custom `fragmentsDir` of `craft-fragments`, for example, and we want to add a custom square image to our blog entries, we might create a `craft-fragments/blogImages.graphql` file and add the following:
+
+```graphql
+fragment thumbnailImage on blog_blog_Entry {
+  coverImage {
+    square: url @transform (width: 300 height: 300)
+  }
+}
+```
+
+This will be copied into `node_modules/gatsby-source-craftcms/.cache/craft-fragments/` at build time and used as Gatsby’s source nodes are built—meaning `coverImage` will be available on blog entries with its URL to a 300px square image.
+
+**Editing Sourced Fragments**
+
+For complete control over the sourced schema, you can copy any of the generated types into your `fragmentsDir`.
+
+```sh
+cp node_modules/gatsby-source-craftcms/.cache/craft-fragments/blog_blog_Entry.graphql craft-fragments/blog_blog_Entry.graphql
+```
+
+In this case it’s important to maintain the exact filename of the type fragment you’d like to override. This allows you to remove properties you don’t want available to Gatsby, apply directives by default on existing ones, and change the sourced fragment however you’d like.
+
+The only downside is that you’re fully overriding the source fragment and you’ll need to manually apply any Craft schema changes yourself; running `gatsby clean` and re-sourcing the Craft schema will generate an up-to-date fragment in `node_modules/gatsby-source-craftcms/.cache/craft-fragments/`, but it will be ignored since you’re overriding it.
 
 #### Building the Site
 
@@ -317,11 +343,11 @@ Once data from *any* source, including Craft CMS, is converted into Gatsby data 
 
 Once everything’s cached on this first run, subsequent builds will apply delta changes and be much faster. (If Craft’s project config is changed or you run `gatsby clean`, the entire site will be sourced again.)
 
-#### Applying Directives and Craft-Specific Filtering
+#### Applying Directives
 
-TODO: explain what directives are
+The most common scenario for adjusting the generated fragments is for creating custom fields or applying [directives](https://graphql.org/learn/queries/#directives). Since directives are applied when Craft returns the data, they cannot be applied after Gatsby already has it. The same is true for applying filters that only Craft would know how to process.
 
-The most common scenario for adjusting the generated fragments is for creating custom fields or applying directives. Since directives are applied when Craft returns the data, they cannot be applied after Gatsby already has it. The same is true for applying filters that only Craft would know how to process.
+See Craft’s list of available [GraphQL directives](https://craftcms.com/docs/3.x/graphql.html#list-of-available-directives) for more on what’s available.
 
 Using [image transforms](https://craftcms.com/docs/3.x/image-transforms.html), for example, would require generating them when sourcing the data. Here we’ve modified the custom `frontPageThumb` asset field to specifically return a URL for an image pre-cropped to 400 pixels square:
 

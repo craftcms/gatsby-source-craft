@@ -21,8 +21,8 @@ It requires for the corresponding [Gatsby Helper](https://github.com/craftcms/ga
   - [Live Preview](#live-preview)
   - [Building the Site](#building-the-site)
 - [Differences from Other Source Plugins](#differences-from-other-source-plugins)
-  - [Legacy `gatsby-source-craftcms`](#legacy-gatsby-source-craftcms)
   - [`gatsby-source-graphql`](#gatsby-source-graphql)
+  - [`gatsby-source-craftcms`](#legacy-gatsby-source-craftcms)
 - [Troubleshooting](#troubleshooting)
 - [Resources](#resources)
 
@@ -391,9 +391,9 @@ If you’re migrating a Gatsby project from the GraphQL source plugin to this Cr
 - Any user details, like entry author information, must be wrapped with `... on Craft_User {}`.
 - Various casing will need to change, often from snake case (`blog_blog_Entry`) to camelCase (`BlogBlogEntry`). Only fragments continue to use snake case, like `... on Craft_blog_blog_Entry {}`.
 
-### Legacy `gatsby-source-craftcms`
+### `gatsby-source-craftcms`
 
-The [original Craft CMS source plugin](https://github.com/gusnips/gatsby-source-craftcms) was superseded by [`gatsby-source-graphql`](#gatsby-source-graphql). Despite having the same name, this Gatsby source plugin is built and maintained directly by the Craft CMS team.
+Despite having a similar name, the legacy [`gatsby-source-craftcms`](https://www.gatsbyjs.com/plugins/gatsby-source-craftcms/) plugin is unaffiliated with this one, and is now deprecated.
 
 ## Troubleshooting
 

@@ -1,8 +1,20 @@
 {
   "name": "gatsby-source-craft",
-  "description": "Craft CMS source plugin for Gatsby",
   "version": "1.0.0-beta.1",
+  "description": "Gatsby source plugin for Craft CMS",
+  "keywords": [
+    "gatsby",
+    "gatsby-plugin",
+    "craft",
+    "cms",
+    "craftcms"
+  ],
+  "homepage": "https://craftcms.com/",
+  "bugs": {
+    "url": "https://github.com/craftcms/gatsby-source-craft/issues"
+  },
   "license": "MIT",
+  "repository": "github:craftcms/gatsby-source-craft",
   "scripts": {
     "build": "gatsby build",
     "develop": "gatsby develop",
@@ -24,12 +36,5 @@
     "@types/fs-extra": "^9.0.1",
     "dotenv": "^8.2.0",
     "prettier": "2.0.5"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/gatsbyjs/gatsby-starter-hello-world"
-  },
-  "bugs": {
-    "url": "https://github.com/gatsbyjs/gatsby/issues"
   }
 }

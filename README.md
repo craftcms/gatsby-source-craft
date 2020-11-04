@@ -22,7 +22,7 @@ It requires for the corresponding [Gatsby Helper](https://github.com/craftcms/ga
   - [Building the Site](#building-the-site)
 - [Differences from Other Source Plugins](#differences-from-other-source-plugins)
   - [`gatsby-source-graphql`](#gatsby-source-graphql)
-  - [`gatsby-source-craftcms`](#legacy-gatsby-source-craftcms)
+  - [`gatsby-source-craftcms`](#gatsby-source-craftcms)
 - [Troubleshooting](#troubleshooting)
 - [Resources](#resources)
 

@@ -21,8 +21,8 @@ It requires for the corresponding [Gatsby Helper](https://github.com/craftcms/ga
   - [Live Preview](#live-preview)
   - [Building the Site](#building-the-site)
 - [Differences from Other Source Plugins](#differences-from-other-source-plugins)
-  - [`gatsby-source-graphql`](#gatsby-source-graphql)
-  - [`gatsby-source-craftcms`](#gatsby-source-craftcms)
+  - [gatsby-source-graphql](#gatsby-source-graphql)
+  - [gatsby-source-craftcms](#gatsby-source-craftcms)
 - [Troubleshooting](#troubleshooting)
 - [Resources](#resources)
 
@@ -372,9 +372,9 @@ fragment uploads_Asset on uploads_Asset {
 
 ## Differences from Other Source Plugins
 
-### `gatsby-source-graphql`
+### gatsby-source-graphql
 
-Most Gatsby-Craft sites were likely built with the [`gatsby-source-graphql` plugin](https://www.gatsbyjs.com/plugins/gatsby-source-graphql/), which executes GraphQL queries at build time. This comes with two main disadvantages:
+Most Gatsby-Craft sites were likely built with the [gatsby-source-graphql](https://www.gatsbyjs.com/plugins/gatsby-source-graphql/) plugin, which executes GraphQL queries at build time. This comes with two main disadvantages:
 
 1. Because every GraphQL query is executed at build time, builds could be slow particularly with larger sites.
 2. Every build is all-or-nothing, with no ability to partially source schema changes.
@@ -391,9 +391,9 @@ If you’re migrating a Gatsby project from the GraphQL source plugin to this Cr
 - Any user details, like entry author information, must be wrapped with `... on Craft_User {}`.
 - Various casing will need to change, often from snake case (`blog_blog_Entry`) to camelCase (`BlogBlogEntry`). Only fragments continue to use snake case, like `... on Craft_blog_blog_Entry {}`.
 
-### `gatsby-source-craftcms`
+### gatsby-source-craftcms
 
-Despite having a similar name, the legacy [`gatsby-source-craftcms`](https://www.gatsbyjs.com/plugins/gatsby-source-craftcms/) plugin is unaffiliated with this one, and is now deprecated.
+Despite having a similar name, the legacy [gatsby-source-craftcms](https://www.gatsbyjs.com/plugins/gatsby-source-craftcms/) plugin is unaffiliated with this one, and is now deprecated.
 
 ## Troubleshooting
 

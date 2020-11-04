@@ -10,7 +10,7 @@
     "cms",
     "craftcms"
   ],
-  "homepage": "https://craftcms.com/",
+  "homepage": "https://craftcms.com",
   "bugs": {
     "url": "https://github.com/craftcms/gatsby-source-craft/issues"
   },

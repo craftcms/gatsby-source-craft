@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="craftcms-gatsby.svg" width="278" height="100" alt="Craft CMS + Gatsby">
+  <img src="https://github.com/craftcms/gatsby-source-craft/raw/main/craftcms-gatsby.svg" width="278" height="100" alt="Craft CMS + Gatsby">
 </p>
 <h1 align="center">Gatsby source plugin for Craft CMS</h1>
 

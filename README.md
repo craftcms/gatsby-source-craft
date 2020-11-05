@@ -407,6 +407,10 @@ When you run Gatsby subsequently, if Gatsby caches have not been cleaned out, Ga
 
 As new data is pulled in, though, Gatsby might not know all the relations made by Craft and also which relations might be used when building the site. (See the [related issue here](https://github.com/gatsbyjs/gatsby-graphql-toolkit/issues/18)). This means that sometimes incremental sourcing can make your site have some obsolete content. For this reason, it is recommended to do a full page build (by cleaning the Gatsby caches beforehand) before deploying the built site.
 
+### `childImageSharp` nodes result in an error.
+
+Craft image assets can be fetched by URL and transformed by Craft, but cannot yet be transformed easily with `gatsby-image`. See the following issue for current status and a workaround: https://github.com/craftcms/gatsby-source-craft/issues/6
+
 ## Resources
 
 We highly recommend you check out these resources as you’re getting started with Craft CMS and Gatsby:

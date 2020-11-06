@@ -13,6 +13,8 @@ It requires for the corresponding [Gatsby Helper](https://github.com/craftcms/ga
 
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
+  - [Configure the Craft Helper Plugin](#configure-the-craft-helper-plugin)
+  - [Install and Configure the Gatsby Source Plugin](#install-and-configure-the-gatsby-source-plugin)
 - [Overview](#overview)
 - [Usage](#usage)
   - [Configuration Options](#configuration-options)
@@ -23,9 +25,9 @@ It requires for the corresponding [Gatsby Helper](https://github.com/craftcms/ga
 - [Differences from Other Source Plugins](#differences-from-other-source-plugins)
   - [gatsby-source-graphql](#gatsby-source-graphql)
   - [gatsby-source-craftcms](#gatsby-source-craftcms)
+- [Integrating Third-Party Content](#integrating-third-party-content)
 - [Troubleshooting](#troubleshooting)
 - [Resources](#resources)
-
 ---
 
 ## Requirements
@@ -35,7 +37,25 @@ It requires for the corresponding [Gatsby Helper](https://github.com/craftcms/ga
 
 ## Quick Start
 
-### 1. Install the Source Plugin
+### Configure the Craft Helper Plugin
+
+On the Craft CMS end, you’ll need the following:
+
+- Content in your Craft project that can be queried.
+- A configured GraphQL endpoint for Craft.
+- A GraphQL schema that has the Gatsby component enabled.
+
+If you’ve never built a Craft site, the best place to start is the [Intro to Craft CMS Tutorial](https://craftcms.com/docs/getting-started-tutorial/).
+
+For configuring Craft’s GraphQL endpoint, schema, and tokens, see Craft’s [GraphQL documentation](https://craftcms.com/docs/3.x/graphql.html#getting-started).
+
+Once your endpoint and schema are established, be sure to enable **Allow discovery of sourcing data for Gatsby** in the **Gatsby** section of the schema you’d like to query with the [gatsby-source-craft](https://github.com/craftcms/gatsby-source-craft) Gatsby plugin.
+
+You may optionally designate a **Preview Server URL** in the plugin settings.
+
+### Install and Configure the Gatsby Source Plugin
+
+#### 1. Install the Source Plugin
 
 Install the Gatsby source plugin by running the following command in your terminal:
 
@@ -43,7 +63,7 @@ Install the Gatsby source plugin by running the following command in your termin
 npm install --save-dev gatsby-source-craft
 ```
 
-### 2. Configure the Source Plugin
+#### 2. Configure the Source Plugin
 
 At minimum, you’ll need to add or edit your Gatsby project’s `.env` file with environment variables that specify your Craft CMS GraphQL endpoint and token:
 
@@ -77,7 +97,7 @@ You may optionally override any of the default [configuration options](#configur
   // ...
 ```
 
-### 3. Confirm Success
+#### 3. Confirm Success
 
 Run `gatsby develop` and you should be able to watch Gatsby source the entire Craft CMS schema. When it’s finished, you should be able to query your Craft content running http://localhost:8000/___graphql.
 
@@ -395,11 +415,73 @@ If you’re migrating a Gatsby project from the GraphQL source plugin to this Cr
 
 Despite having a similar name, the legacy [gatsby-source-craftcms](https://www.gatsbyjs.com/plugins/gatsby-source-craftcms/) plugin is unaffiliated with this one, and is now deprecated.
 
+## Integrating Third-Party Content
+
+By default, this plugin only exposes elements provided by Craft itself. You can use your own custom module or third-party plugin to add elements using the following events:
+
+### `registerSourceNodeTypes`
+
+Event that’s triggered when registering source node types.
+
+Plugins get a chance to specify additional elements that should be Gatsby source nodes.
+
+```php
+use craft\gatsbyhelper\events\RegisterSourceNodeTypesEvent;
+use craft\gatsbyhelper\services\SourceNodes;
+use yii\base\Event;
+
+Event::on(
+    SourceNodes::class,
+    SourceNodes::EVENT_REGISTER_SOURCE_NODE_TYPES,
+    function(RegisterSourceNodeTypesEvent $event) {
+        $event->types[] = [
+            'node' => 'book',
+            'list' => 'books',
+            'filterArgument' => 'type',
+            'filterTypeExpression' => '(.+)_Book',
+            'targetInterface' => BookInterface::getName(),
+        ];
+    }
+);
+```
+
+Defining source node types looks a bit complex, so let’s go over the definition line-by-line:
+
+- `node` is the GraphQL query Gatsby should use when querying for a single node. This must match the query name provided by your plugin.
+- `list` is the GraphQL query Gatsby should use when querying for a list of nodes. This must match the query name provided by your plugin.
+- `filterArgument` is the argument name to be used when querying for distinct types.\
+When querying for assets, for example, it would be `volume` where entries would be `type`. This is necessary for elements that have different types. If your element does not, you can leave this blank.
+- `filterTypeExpression` is used with `filterArgument` to figure out the value for the argument. The value of this will be applied as a regular expression to the GraphQL type name of a specific element and the first returned match will be used as the value.\
+For example, for assets the value is `(.+)_Asset$` while for entries the value is `(?:.+)_(.+)_Entry+$` (because we need to use the entry type handle, not section handle).
+- `targetInterface` is the GraphQL interface name to which the node type configuration should be applied.
+
+### `registerIgnoredTypes`
+
+Event that’s triggered when registering ignored element types.
+
+Plugins get a chance to specify which element types should not be updated individually.
+
+```php
+use craft\gatsbyhelper\events\RegisterIgnoredTypesEvent;
+use craft\gatsbyhelper\services\Deltas;
+use yii\base\Event;
+
+Event::on(
+    Deltas::class,
+    Deltas::EVENT_REGISTER_IGNORED_TYPES,
+    function(RegisterIgnoredTypesEvent $event) {
+        $event->types[] = MyType::class;
+    }
+);
+```
+
+This event should be used for element types that will _always_ be updated as part of a different element. For example, a Matrix block will never be updated by itself—it will always be updated when saving some other element, so the changes to individual Matrix blocks should not be tracked.
+
 ## Troubleshooting
 
 ### Gatsby doesn’t see Craft schema changes.
 
-When you add new fields, you have to keep in mind, that Gatsby will pull in only the content it is told to query - namely, whatever is specified in the GraphQL fragments. You either have to add the new fields to the already-existing fragments or you can simply clear out the fragment folder so that Gatsby regenerates them on the next run.
+When you add new fields, Gatsby will pull in only the content it’s told to query—whatever is specified in the GraphQL fragments. You either have to add the new fields to the already-existing fragments or you can simply clear out the fragment folder so that Gatsby regenerates them on the next run.
 
 ### Subsequent Gatsby builds have incomplete content.
 

@@ -2,13 +2,14 @@ import {GraphQLSchema} from "graphql";
 import {GraphQLAbstractType, GraphQLField, GraphQLInterfaceType, GraphQLObjectType} from "graphql/type/definition";
 import {IGatsbyNodeConfig, IGatsbyNodeDefinition, ISourcingConfig} from "gatsby-graphql-source-toolkit/dist/types";
 import {NodePluginArgs, Reporter} from "gatsby";
+import {createRemoteFileNode} from "gatsby-source-filesystem";
 
 type SourcePluginOptions = {
     concurrency: number,
     debugDir: string,
     fragmentsDir: string,
     typePrefix: string,
-    looseInterfaces: boolean
+    looseInterfaces: boolean,
 }
 
 type ModifiedNodeInfo = {
@@ -47,7 +48,7 @@ const loadedPluginOptions: SourcePluginOptions = {
     debugDir: __dirname + "/.cache/craft-graphql-documents",
     fragmentsDir: __dirname + "/.cache/craft-fragments",
     typePrefix: "Craft_",
-    looseInterfaces: false
+    looseInterfaces: false,
 };
 
 const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
@@ -434,6 +435,38 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
     createTypes(typeDefs);
 
     await createSchemaCustomization(config)
+}
+
+// @ts-ignore
+// Add `localFile` nodes to assets.
+exports.createResolvers = async ({ createResolvers, intermediateSchema,  actions, cache, createNodeId, store, reporter }) => {
+    const { createNode } = actions;
+    const ifaceName = loadedPluginOptions.typePrefix + 'AssetInterface';
+    const iface = intermediateSchema.getType(ifaceName) as GraphQLInterfaceType;
+    const possibleTypes = intermediateSchema.getPossibleTypes(iface);
+    const resolvers: {[key: string] : any}  = {};
+
+    for (const assetType of possibleTypes) {
+        resolvers[assetType] = {
+            localFile: {
+                type: `File`,
+                async resolve(source: any) {
+                    if (source.url) {
+                        return await createRemoteFileNode({
+                            url: source.url,
+                            store,
+                            cache,
+                            createNode,
+                            createNodeId,
+                            reporter
+                        });
+                    }
+                },
+            },
+        }
+    }
+
+    createResolvers(resolvers);
 }
 
 // Source the actual Gatsby nodes

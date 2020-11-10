@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const gatsby_source_filesystem_1 = require("gatsby-source-filesystem");
 const fs = require("fs-extra");
 const fetch = require("node-fetch");
 const path = require("path");
@@ -13,7 +14,7 @@ const loadedPluginOptions = {
     debugDir: __dirname + "/.cache/craft-graphql-documents",
     fragmentsDir: __dirname + "/.cache/craft-fragments",
     typePrefix: "Craft_",
-    looseInterfaces: false
+    looseInterfaces: false,
 };
 const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
 const mandatoryFragments = {
@@ -331,6 +332,35 @@ exports.createSchemaCustomization = async (gatsbyApi) => {
     }
     createTypes(typeDefs);
     await createSchemaCustomization(config);
+};
+// @ts-ignore
+// Add `localFile` nodes to assets.
+exports.createResolvers = async ({ createResolvers, intermediateSchema, actions, cache, createNodeId, store, reporter }) => {
+    const { createNode } = actions;
+    const ifaceName = loadedPluginOptions.typePrefix + 'AssetInterface';
+    const iface = intermediateSchema.getType(ifaceName);
+    const possibleTypes = intermediateSchema.getPossibleTypes(iface);
+    const resolvers = {};
+    for (const assetType of possibleTypes) {
+        resolvers[assetType] = {
+            localFile: {
+                type: `File`,
+                async resolve(source) {
+                    if (source.url) {
+                        return await gatsby_source_filesystem_1.createRemoteFileNode({
+                            url: source.url,
+                            store,
+                            cache,
+                            createNode,
+                            createNodeId,
+                            reporter
+                        });
+                    }
+                },
+            },
+        };
+    }
+    createResolvers(resolvers);
 };
 // Source the actual Gatsby nodes
 exports.sourceNodes = async (gatsbyApi) => {

@@ -15,6 +15,7 @@ const loadedPluginOptions = {
     fragmentsDir: __dirname + "/.cache/craft-fragments",
     typePrefix: "Craft_",
     looseInterfaces: false,
+    sourcingParams: {}
 };
 const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
 const mandatoryFragments = {
@@ -150,7 +151,22 @@ async function getGatsbyNodeTypes() {
                     typeFilter = sourceNodeInformation.filterArgument + ': "' + matches[1] + '"';
                 }
             }
-            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
+            // Add sourcing parameters defined by user to the sourcing queries
+            let configuredParameters = {};
+            // Interfaces first
+            if (interfaceName in loadedPluginOptions.sourcingParams) {
+                configuredParameters = Object.assign(configuredParameters, loadedPluginOptions.sourcingParams[interfaceName]);
+            }
+            // More specific implementations next
+            if (typeName in loadedPluginOptions.sourcingParams) {
+                configuredParameters = Object.assign(configuredParameters, loadedPluginOptions.sourcingParams[typeName]);
+            }
+            // Convert all of that to a string
+            let configuredParameterString = '';
+            for (const [key, value] of Object.entries(configuredParameters)) {
+                configuredParameterString += `${key}: ${value} `;
+            }
+            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
             `;
             return queries;
         }));
@@ -247,13 +263,14 @@ async function execute(operation) {
     return await res.json();
 }
 exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f;
     // Set all the config settings pre-bootstrap
     loadedPluginOptions.concurrency = (_a = pluginOptions.concurrency) !== null && _a !== void 0 ? _a : loadedPluginOptions.concurrency;
     loadedPluginOptions.debugDir = (_b = pluginOptions.debugDir) !== null && _b !== void 0 ? _b : loadedPluginOptions.debugDir;
     loadedPluginOptions.fragmentsDir = (_c = pluginOptions.fragmentsDir) !== null && _c !== void 0 ? _c : loadedPluginOptions.fragmentsDir;
     loadedPluginOptions.typePrefix = (_d = pluginOptions.typePrefix) !== null && _d !== void 0 ? _d : loadedPluginOptions.typePrefix;
     loadedPluginOptions.looseInterfaces = (_e = pluginOptions.looseInterfaces) !== null && _e !== void 0 ? _e : loadedPluginOptions.looseInterfaces;
+    loadedPluginOptions.sourcingParams = (_f = pluginOptions.sourcingParams) !== null && _f !== void 0 ? _f : loadedPluginOptions.sourcingParams;
     // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir);
     await fs.ensureDir(loadedPluginOptions.fragmentsDir);

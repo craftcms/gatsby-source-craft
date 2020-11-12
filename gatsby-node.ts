@@ -10,6 +10,7 @@ type SourcePluginOptions = {
     fragmentsDir: string,
     typePrefix: string,
     looseInterfaces: boolean,
+    sourcingParams: { [key: string]: { [key:string] : string}}
 }
 
 type ModifiedNodeInfo = {
@@ -49,6 +50,7 @@ const loadedPluginOptions: SourcePluginOptions = {
     fragmentsDir: __dirname + "/.cache/craft-fragments",
     typePrefix: "Craft_",
     looseInterfaces: false,
+    sourcingParams: {}
 };
 
 const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
@@ -213,7 +215,26 @@ async function getGatsbyNodeTypes() {
                 }
             }
 
-            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset) { ... ${fragmentInfo.fragmentName} } }
+            // Add sourcing parameters defined by user to the sourcing queries
+            let configuredParameters = {};
+
+            // Interfaces first
+            if (interfaceName in loadedPluginOptions.sourcingParams) {
+                configuredParameters = Object.assign(configuredParameters, loadedPluginOptions.sourcingParams[interfaceName]);
+            }
+
+            // More specific implementations next
+            if (typeName in loadedPluginOptions.sourcingParams) {
+                configuredParameters = Object.assign(configuredParameters, loadedPluginOptions.sourcingParams[typeName]);
+            }
+
+            // Convert all of that to a string
+            let configuredParameterString = '';
+            for (const [key, value] of Object.entries(configuredParameters)) {
+                configuredParameterString += `${key}: ${value} `;
+            }
+
+            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
             `;
 
             return queries;
@@ -337,6 +358,7 @@ exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: Source
     loadedPluginOptions.fragmentsDir = pluginOptions.fragmentsDir ?? loadedPluginOptions.fragmentsDir;
     loadedPluginOptions.typePrefix = pluginOptions.typePrefix ?? loadedPluginOptions.typePrefix;
     loadedPluginOptions.looseInterfaces = pluginOptions.looseInterfaces ?? loadedPluginOptions.looseInterfaces;
+    loadedPluginOptions.sourcingParams = pluginOptions.sourcingParams ?? loadedPluginOptions.sourcingParams;
 
     // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir)

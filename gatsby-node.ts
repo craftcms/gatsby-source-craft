@@ -10,18 +10,21 @@ type SourcePluginOptions = {
     fragmentsDir: string,
     typePrefix: string,
     looseInterfaces: boolean,
-    sourcingParams: { [key: string]: { [key:string] : string}}
+    sourcingParams: { [key: string]: { [key:string] : string}},
+    enabledSites: string|[string]|null
 }
 
 type ModifiedNodeInfo = {
     nodeId: number,
-    nodeType: string
+    nodeType: string,
+    siteId: number,
 }
 
 type WebhookBody = {
     operation: string,
     typeName: string,
     id: number,
+    siteId: number,
     token?: string
 }
 
@@ -50,7 +53,8 @@ const loadedPluginOptions: SourcePluginOptions = {
     fragmentsDir: __dirname + "/.cache/craft-fragments",
     typePrefix: "Craft_",
     looseInterfaces: false,
-    sourcingParams: {}
+    sourcingParams: {},
+    enabledSites: null
 };
 
 const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
@@ -65,6 +69,8 @@ let previewToken: string|null;
 let craftInterfaces: string[] = [];
 let craftTypesByInterface: { [key: string]: [GraphQLObjectType] } = {};
 let craftFieldsByInterface: { [key: string]: [GraphQLField<any, any>] } = {};
+
+let craftPrimarySiteId = '';
 
 /**
  * Fetch the schema
@@ -100,13 +106,15 @@ async function getGatsbyNodeTypes() {
 
     const queryResponse = await execute({
         operationName: 'sourceNodeData',
-        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression  targetInterface } }',
+        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression  targetInterface } primarySiteId}',
         variables: {}
     });
 
     if (!(queryResponse.data && queryResponse.data.sourceNodeInformation)) {
         return ([]);
     }
+
+    craftPrimarySiteId = queryResponse.data.primarySiteId;
 
     const sourceNodeInformation = queryResponse.data.sourceNodeInformation;
     const queryMap: { [key: string]: { list: string, node: string, filterArgument?: string, filterTypeExpression?: string } } = {};
@@ -163,6 +171,13 @@ async function getGatsbyNodeTypes() {
             return ({
                 remoteTypeName: type.name,
                 queries: queryListBuilder(type.name, canBeDraft(type)),
+                nodeQueryVariables: id => {
+                    const idValue = id.sourceId ?? id.id;
+                    return {
+                        id: idValue,
+                        siteId: id.siteId
+                    }
+                }
             })
         });
     }
@@ -181,12 +196,26 @@ async function getGatsbyNodeTypes() {
             fragment ${fragmentName} on ${typeName} {
                 __typename
                 ${idProperty}
+                siteId
             }
             `
         };
     };
 
     gatsbyNodeTypes = [];
+
+    let craftSites = '';
+
+    if (loadedPluginOptions.enabledSites) {
+        if (typeof loadedPluginOptions.enabledSites == "object") {
+            craftSites = `["${loadedPluginOptions.enabledSites.join('", "')}"]`;
+        } else {
+            craftSites = `"${loadedPluginOptions.enabledSites}"`;
+        }
+    } else {
+        craftSites = `"${craftPrimarySiteId}"`;
+    }
+
 
     // For all the mapped queries
     for (let [interfaceName, sourceNodeInformation] of Object.entries(queryMap)) {
@@ -199,7 +228,7 @@ async function getGatsbyNodeTypes() {
 
             // and define queries for the concrete type
             if (sourceNodeInformation.node) {
-                queries += `query NODE_${typeName} { ${sourceNodeInformation.node}(id: $id) { ... ${fragmentInfo.fragmentName}  } }
+                queries += `query NODE_${typeName} { ${sourceNodeInformation.node}(id: $id siteId: $siteId) { ... ${fragmentInfo.fragmentName}  } }
                 `;
             }
 
@@ -234,7 +263,7 @@ async function getGatsbyNodeTypes() {
                 configuredParameterString += `${key}: ${value} `;
             }
 
-            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
+            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset site: ${craftSites} ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
             `;
 
             return queries;
@@ -359,6 +388,7 @@ exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: Source
     loadedPluginOptions.typePrefix = pluginOptions.typePrefix ?? loadedPluginOptions.typePrefix;
     loadedPluginOptions.looseInterfaces = pluginOptions.looseInterfaces ?? loadedPluginOptions.looseInterfaces;
     loadedPluginOptions.sourcingParams = pluginOptions.sourcingParams ?? loadedPluginOptions.sourcingParams;
+    loadedPluginOptions.enabledSites = pluginOptions.enabledSites ?? loadedPluginOptions.enabledSites;
 
     // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir)
@@ -500,7 +530,7 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
     if (webhookBody && typeof webhookBody == "object" && Object.keys(webhookBody).length) {
         reporter.info("Processing webhook.");
         const nodeEvent = (webhookBody: WebhookBody) => {
-            const {operation, typeName, id} = webhookBody;
+            const {operation, typeName, id, siteId} = webhookBody;
             let eventName = '';
 
             switch (operation) {
@@ -518,7 +548,7 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
             return {
                 eventName,
                 remoteTypeName: typeName,
-                remoteId: {id, __typename: typeName},
+                remoteId: {id, __typename: typeName, siteId},
             }
         }
 
@@ -534,7 +564,7 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
 
     const {data} = await execute({
         operationName: 'craftState',
-        query: 'query craftState { configVersion  lastUpdateTime}',
+        query: 'query craftState { configVersion  lastUpdateTime }',
         variables: {}
     });
 
@@ -555,8 +585,8 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
         const {data} = await execute({
             operationName: 'nodeChanges',
             query: `query nodeChanges {  
-                nodesUpdatedSince (since: "${localContentUpdateTime}") { nodeId nodeType }
-                nodesDeletedSince (since: "${localContentUpdateTime}") { nodeId nodeType }
+                nodesUpdatedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
+                nodesDeletedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
             }`,
             variables: {}
         });
@@ -570,14 +600,14 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
                 return {
                     eventName: 'UPDATE',
                     remoteTypeName: entry.nodeType,
-                    remoteId: {__typename: entry.nodeType, id: entry.nodeId}
+                    remoteId: {__typename: entry.nodeType, id: entry.nodeId, siteId: entry.siteId}
                 };
             }),
             ...deletedNodes.map(entry => {
                 return {
                     eventName: 'DELETE',
                     remoteTypeName: entry.nodeType,
-                    remoteId: {__typename: entry.nodeType, id: entry.nodeId}
+                    remoteId: {__typename: entry.nodeType, id: entry.nodeId, siteId: entry.siteId}
                 };
             })
         ];

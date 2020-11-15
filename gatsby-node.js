@@ -441,7 +441,7 @@ exports.sourceNodes = async (gatsbyApi) => {
     const { data } = await execute({
         operationName: 'craftState',
         query: 'query craftState { configVersion  lastUpdateTime }',
-        variables: {}
+        variables: { bustCache: Math.random() }
     });
     const remoteConfigVersion = data.configVersion;
     const remoteContentUpdateTime = data.lastUpdateTime;

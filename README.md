@@ -53,7 +53,7 @@ For configuring Craft’s GraphQL endpoint, schema, and tokens, see Craft’s [G
 
 Once your endpoint and schema are established, be sure to enable **Allow discovery of sourcing data for Gatsby** in the **Gatsby** section of the schema you’d like to query with the [gatsby-source-craft](https://github.com/craftcms/gatsby-source-craft) Gatsby plugin.
 
-You may optionally designate a **Preview Server URL** in the plugin settings.
+You may optionally designate a **Preview webhook target URL** in the plugin settings.
 
 ### Install and Configure the Gatsby Source Plugin
 
@@ -344,7 +344,7 @@ This example directs the plugin to source content from the default site and a se
 In order to support [live preview targets](https://craftcms.com/docs/3.x/entries.html#preview-targets) for Craft content editors, Gatsby must be running in development mode and the Craft CMS Gatsby Helper must be configured with the Gatsby development server’s URL.
 
 1. In the Craft control panel, add a new live preview target that points to your desired Gatsby URL. (For example: `http://localhost:8000/blog/{slug}`. Leave **Refresh** un-checked.)
-2. In the Craft control panel, navigate to **Settings** → **Gatsby Helper** and be sure you’ve added your **Preview Server URL** pointing to your local Gatsby site. (Example: `http://localhost:8000`.)
+2. In the Craft control panel, navigate to **Settings** → **Gatsby Helper** and be sure you’ve added your **Preview webhook target URL** pointing to your local Gatsby site. (Example: `http://localhost:8000`.)
 3. In your Gatsby project, edit `.env` to include `ENABLE_GATSBY_REFRESH_ENDPOINT = true`.
 4. Run or restart `gatsby develop`.
 

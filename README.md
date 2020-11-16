@@ -20,6 +20,8 @@ It requires for the corresponding [Gatsby Helper](https://github.com/craftcms/ga
   - [Configuration Options](#configuration-options)
   - [Fetching Craft Content](#fetching-craft-content)
   - [Enabling Loose Interfaces](#enabling-loose-interfaces)
+  - [Using Sourcing Parameters](#using-sourcing-parameters)
+  - [Sourcing Multiple Sites](#sourcing-multiple-sites)
   - [Live Preview](#live-preview)
   - [Building the Site](#building-the-site)
 - [Differences from Other Source Plugins](#differences-from-other-source-plugins)
@@ -128,6 +130,8 @@ If you’re a learn-by-reading type that’s new to Craft CMS, you may first wan
 | `fragmentsDir`    | `.cache/craft-fragments`         | Directory for storing GraphQL fragments.
 | `typePrefix`      | `Craft_`                         | Craft schema type prefix. (Underscore is optional; see examples below.)
 | `looseInterfaces` | `false`                          | Whether to allow filtering all Craft types by all available interfaces. (See [Enabling Loose Interfaces](#enabling-loose-interfaces).)
+| `sourcingParams`  | `{}`                             | Parameters to be included by type when sourcing content. (See [Using Sourcing Parameters](#using-sourcing-parameters))
+| `enabledSites`    | `null`                           | Defaults to primary site, but may be set to an array of site handles. (See [Sourcing Multiple Sites](#sourcing-multiple-sites).)
 
 ### Fetching Craft Content
 
@@ -295,6 +299,45 @@ The downside is that each result may be more confusing to look at. Birds will ha
 **This is only true for interfaces that share a specific type, not *all* interfaces in Craft’s schema.** In more practical terms, a normal section entry could have a misleading `structureId` property—but an asset would not.
 
 > ⚠️ Filtering by a non-existent field [can result in unexpected behavior](https://www.gatsbyjs.com/docs/query-filters/#nulls-and-partial-paths). Make sure your other filter fields narrow the results down to a set of results that actually implement the field you’re filtering against.
+
+### Using Sourcing Parameters
+
+You can use the `sourcingParams` config option to pass additional GraphQL query parameters when the Craft CMS site is sourced by this plugin. You might use these parameters, for example, to fetch disabled or expired entries since they’re not available by default.
+
+The option takes an object where each key represents the source type you’d like to extend with an object of parameters to be included when sourcing that type.
+
+This example limits assets fetched from the `uploads` volume to images only, and sets `archived: false` on all Asset sourcing queries:
+
+```json
+{
+  resolve: `gatsby-source-craft`,
+  options: {
+    sourcingParams: {
+      uploads_Asset: {
+        kind: '"image"'
+      },
+      AssetInterface: {
+        archived: "false"
+      }
+    }
+  }
+},
+```
+
+### Sourcing Multiple Sites
+
+By default, only your primary Craft CMS [site](https://craftcms.com/docs/3.x/sites.html) will be sourced for Gatsby. You can enable additional sites, however, using the `enabledSites` config option.
+
+This example directs the plugin to source content from the default site and a second French site—assuming `default` is the default site’s handle and `french` is the handle for the second site.
+
+```json
+{
+  resolve: `gatsby-source-craft`,
+  options: {
+    enabledSites: [`default`, `french`]
+  }
+},
+```
 
 ### Live Preview
 

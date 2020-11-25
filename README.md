@@ -5,7 +5,7 @@
 
 This Gatsby source plugin provides an integration with [Craft CMS](https://craftcms.com). It uses Craft’s [GraphQL API](https://docs.craftcms.com/v3/graphql.html) to make content within Craft available to Gatsby-powered front ends.
 
-It requires Craft CMS 3.5.11 or later, and for the corresponding [Gatsby Helper](https://github.com/craftcms/gatsby-helper) plugin to be installed on the Craft site.
+It requires Craft CMS 3.5.16 or later, and for the corresponding [Gatsby Helper](https://github.com/craftcms/gatsby-helper) plugin to be installed on the Craft site.
 
 ---
 

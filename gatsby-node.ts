@@ -106,8 +106,11 @@ async function getGatsbyNodeTypes() {
 
     const queryResponse = await execute({
         operationName: 'sourceNodeData',
-        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression  targetInterface } primarySiteId}',
-        variables: {}
+        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression targetInterface } primarySiteId }',
+        variables: {},
+        additionalHeaders: {
+            "X-Craft-Gql-Cache": "no-cache"
+        }
     });
 
     if (!(queryResponse.data && queryResponse.data.sourceNodeInformation)) {
@@ -355,12 +358,13 @@ async function writeCompiledQueries(nodeDocs: IGatsbyNodeDefinition[]) {
  * Execute a GraphQL query
  * @param operation
  */
-async function execute(operation: { operationName: string, query: string, variables: object }) {
-    let {operationName, query, variables = {}} = operation;
+async function execute(operation: { operationName: string, query: string, variables: object, additionalHeaders: object }) {
+    let {operationName, query, variables = {}, additionalHeaders = {} } = operation;
 
     const headers: { [key: string]: string } = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${craftGqlToken}`,
+        ...additionalHeaders
     };
 
     // Set the token, if it exists
@@ -564,8 +568,11 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
 
     const {data} = await execute({
         operationName: 'craftState',
-        query: 'query craftState { configVersion  lastUpdateTime }',
-        variables: {}
+        query: 'query craftState { configVersion lastUpdateTime }',
+        variables: {},
+        additionalHeaders: {
+            "X-Craft-Gql-Cache": "no-cache"
+        }
     });
 
     const remoteConfigVersion = data.configVersion;
@@ -588,7 +595,10 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
                 nodesUpdatedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
                 nodesDeletedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
             }`,
-            variables: {}
+            variables: {},
+            additionalHeaders: {
+                "X-Craft-Gql-Cache": "no-cache"
+            }
         });
 
         const updatedNodes = data.nodesUpdatedSince as ModifiedNodeInfo[];

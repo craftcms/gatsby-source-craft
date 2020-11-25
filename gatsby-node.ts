@@ -108,9 +108,7 @@ async function getGatsbyNodeTypes() {
         operationName: 'sourceNodeData',
         query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression targetInterface } primarySiteId }',
         variables: {},
-        additionalHeaders: {
-            "X-Craft-Gql-Cache": "no-cache"
-        }
+        additionalHeaders: {}
     });
 
     if (!(queryResponse.data && queryResponse.data.sourceNodeInformation)) {

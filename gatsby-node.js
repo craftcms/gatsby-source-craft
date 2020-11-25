@@ -58,7 +58,7 @@ async function getGatsbyNodeTypes() {
     }
     const queryResponse = await execute({
         operationName: 'sourceNodeData',
-        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression  targetInterface } primarySiteId }',
+        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression targetInterface } primarySiteId }',
         variables: {},
         additionalHeaders: {}
     });

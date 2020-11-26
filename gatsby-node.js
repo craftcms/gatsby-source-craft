@@ -60,7 +60,9 @@ async function getGatsbyNodeTypes() {
         operationName: 'sourceNodeData',
         query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression targetInterface } primarySiteId }',
         variables: {},
-        additionalHeaders: {}
+        additionalHeaders: {
+            "X-Craft-Gql-Cache": "no-cache"
+        }
     });
     if (!(queryResponse.data && queryResponse.data.sourceNodeInformation)) {
         return ([]);
@@ -270,11 +272,7 @@ async function writeCompiledQueries(nodeDocs) {
  */
 async function execute(operation) {
     let { operationName, query, variables = {}, additionalHeaders = {} } = operation;
-    const headers = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${craftGqlToken}`,
-        ...additionalHeaders
-    };
+    const headers = Object.assign({ "Content-Type": "application/json", Authorization: `Bearer ${craftGqlToken}` }, additionalHeaders);
     // Set the token, if it exists
     if (previewToken) {
         headers['X-Craft-Token'] = previewToken;

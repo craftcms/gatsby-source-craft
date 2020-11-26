@@ -58,8 +58,9 @@ async function getGatsbyNodeTypes() {
     }
     const queryResponse = await execute({
         operationName: 'sourceNodeData',
-        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression  targetInterface } primarySiteId}',
-        variables: {}
+        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression targetInterface } primarySiteId }',
+        variables: {},
+        additionalHeaders: {}
     });
     if (!(queryResponse.data && queryResponse.data.sourceNodeInformation)) {
         return ([]);
@@ -268,10 +269,11 @@ async function writeCompiledQueries(nodeDocs) {
  * @param operation
  */
 async function execute(operation) {
-    let { operationName, query, variables = {} } = operation;
+    let { operationName, query, variables = {}, additionalHeaders = {} } = operation;
     const headers = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${craftGqlToken}`,
+        ...additionalHeaders
     };
     // Set the token, if it exists
     if (previewToken) {
@@ -440,8 +442,11 @@ exports.sourceNodes = async (gatsbyApi) => {
     reporter.info("Checking Craft config version.");
     const { data } = await execute({
         operationName: 'craftState',
-        query: 'query craftState { configVersion  lastUpdateTime }',
-        variables: {}
+        query: 'query craftState { configVersion lastUpdateTime }',
+        variables: {},
+        additionalHeaders: {
+            "X-Craft-Gql-Cache": "no-cache"
+        }
     });
     const remoteConfigVersion = data.configVersion;
     const remoteContentUpdateTime = data.lastUpdateTime;
@@ -461,7 +466,10 @@ exports.sourceNodes = async (gatsbyApi) => {
                 nodesUpdatedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
                 nodesDeletedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
             }`,
-            variables: {}
+            variables: {},
+            additionalHeaders: {
+                "X-Craft-Gql-Cache": "no-cache"
+            }
         });
         const updatedNodes = data.nodesUpdatedSince;
         const deletedNodes = data.nodesDeletedSince;

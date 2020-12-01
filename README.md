@@ -308,7 +308,7 @@ The option takes an object where each key represents the source type you’d lik
 
 This example limits assets fetched from the `uploads` volume to images only, and sets `archived: false` on all Asset sourcing queries:
 
-```json
+```js
 {
   resolve: `gatsby-source-craft`,
   options: {
@@ -321,7 +321,7 @@ This example limits assets fetched from the `uploads` volume to images only, and
       }
     }
   }
-},
+}
 ```
 
 ### Sourcing Multiple Sites
@@ -330,13 +330,13 @@ By default, only your primary Craft CMS [site](https://craftcms.com/docs/3.x/sit
 
 This example directs the plugin to source content from the default site and a second French site—assuming `default` is the default site’s handle and `french` is the handle for the second site.
 
-```json
+```js
 {
   resolve: `gatsby-source-craft`,
   options: {
     enabledSites: [`default`, `french`]
   }
-},
+}
 ```
 
 ### Live Preview

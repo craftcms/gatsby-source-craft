@@ -341,16 +341,41 @@ This example directs the plugin to source content from the default site and a se
 
 ### Live Preview
 
+#### For Local Development
+
 In order to support [live preview targets](https://craftcms.com/docs/3.x/entries.html#preview-targets) for Craft content editors, Gatsby must be running in development mode and the Craft CMS Gatsby Helper must be configured with the Gatsby development server’s URL.
 
 1. In the Craft control panel, add a new live preview target that points to your desired Gatsby URL. (For example: `http://localhost:8000/blog/{slug}`. Leave **Refresh** un-checked.)
-2. In the Craft control panel, navigate to **Settings** → **Gatsby Helper** and be sure you’ve added your **Preview webhook target URL** pointing to your local Gatsby site. (Example: `http://localhost:8000`.)
+2. In the Craft control panel, navigate to **Settings** → **Gatsby Helper** and be sure you’ve added your **Preview webhook target URL** pointing to your local Gatsby site. (Working locally, this will most likely be `http://localhost:8000/__refresh`.)
 3. In your Gatsby project, edit `.env` to include `ENABLE_GATSBY_REFRESH_ENDPOINT = true`.
 4. Run or restart `gatsby develop`.
 
 You should now be able to select your Gatsby preview target in live preview and see content updates automatically applied in the preview pane.
 
 > ⚠️ Gatsby does not support rendering a page on its own. When you save a draft during the live preview, Gatsby rebuilds the entire site using the draft instead of the entry itself. Craft does its best to tell Gatsby when to rebuild the site again without using the draft, but it is possible that a site remains built with a draft instead of the published entry.
+
+#### For Production
+
+We recommend [Gatsby Cloud](https://www.gatsbyjs.com/cloud/) for live preview in production.
+
+Configure a site to provide a CMS Preview in Gatsby Cloud:
+
+1. From your Cloud workspace, choose **Add a site +**.
+2. Select **Import from a Git repository**, choose your GitHub or GitLab account, and designate the repository, branch, base directory, and site name you’d like to use.
+3. When you reach **Integrations**, choose **Skip this step**.
+4. Complete the **Setup** step by adding your `CRAFTGQL_TOKEN`, `CRAFTGQL_URL`, and `ENABLE_GATSBY_REFRESH_ENDPOINT` to both the **Build variables** and **Preview variables**.
+5. Wait for the first builds to complete, then grab settings for the Craft configuration steps below:
+    - Navigate to **Site Settings** and grab the **Preview Webhook**.
+    - Navigate to **CMS Preview** and copy the `*.gtsb.io` base URL.
+
+Configure Craft CMS to use Gatsby Cloud for live preview:
+
+1. Add a new live preview target that uses your Gatsby Cloud CMS Preview URL. (For example: `https://preview-foo1234.gtsb.io/blog/{slug}`. Leave **Refresh** un-checked.)
+2. Navigate to **Settings** → **Gatsby Helper** and add the webhook URL from step #5 above to the **Preview webhook target URL** field. (This will look like `https://webhook.gatsbyjs.com/hooks/data_source/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`, without the `__refresh` part you would add for local development.)
+
+You should now be able to select your Gatsby preview target in live preview and see content updates automatically applied in the preview pane.
+
+> 💡 You can set the **Preview webhook target URL** field to an [environment variable](https://craftcms.com/docs/3.x/config/#environmental-configuration) like `$GATSBY_PREVIEW_WEBHOOK` to manage it more easily across environments.
 
 ### Building the Site
 

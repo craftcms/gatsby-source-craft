@@ -385,7 +385,7 @@ You can customize these sourced fragments in two ways:
 
 Either way you’ll want to start by specifying a `fragmentsDir` config option to point to a path within your Gatsby project. Changes you make there will be copied into `node_modules/gatsby-source-craft/.cache/craft-fragments/` at build time, overwriting anything that’s there. Keeping `fragmentsDir` separate ensures customizations won’t be lost when running `gatsby clean` and re-sourcing the Craft schema.
 
-**Appending Custom Fragments**
+#### Appending Custom Fragments
 
 To add your own fragments to the sourced schema, create a file ending in `.graphql` and add your custom fragment.
 
@@ -401,7 +401,7 @@ fragment thumbnailImage on blog_blog_Entry {
 
 This will be copied into `node_modules/gatsby-source-craft/.cache/craft-fragments/` at build time and used as Gatsby’s source nodes are built—meaning `coverImage` will be available on blog entries with its URL to a 300px square image.
 
-**Editing Sourced Fragments**
+#### Editing Sourced Fragments
 
 For complete control over the sourced schema, you can copy any of the generated types into your `fragmentsDir`.
 

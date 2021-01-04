@@ -5,6 +5,8 @@ import {NodePluginArgs, Reporter} from "gatsby";
 import {createRemoteFileNode} from "gatsby-source-filesystem";
 
 type SourcePluginOptions = {
+    craftGqlUrl: string,
+    craftGqlToken: string,
     concurrency: number,
     debugDir: string,
     fragmentsDir: string,
@@ -44,10 +46,9 @@ const {
 } = require("gatsby-graphql-source-toolkit")
 const {isInterfaceType, isListType} = require("graphql")
 
-const craftGqlToken = process.env.CRAFTGQL_TOKEN;
-const craftGqlUrl = process.env.CRAFTGQL_URL;
-
 const loadedPluginOptions: SourcePluginOptions = {
+    craftGqlToken: process.env.CRAFTGQL_TOKEN + "",
+    craftGqlUrl: process.env.CRAFTGQL_URL + "",
     concurrency: 10,
     debugDir: __dirname + "/.cache/craft-graphql-documents",
     fragmentsDir: __dirname + "/.cache/craft-fragments",
@@ -363,7 +364,7 @@ async function execute(operation: { operationName: string, query: string, variab
 
     const headers: { [key: string]: string } = {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${craftGqlToken}`,
+        Authorization: `Bearer ${loadedPluginOptions.craftGqlToken}`,
         ...additionalHeaders
     };
 
@@ -372,7 +373,7 @@ async function execute(operation: { operationName: string, query: string, variab
         headers['X-Craft-Token'] = previewToken;
     }
 
-    const res = await fetch(craftGqlUrl, {
+    const res = await fetch(loadedPluginOptions.craftGqlUrl, {
         method: "POST",
         body: JSON.stringify({query, variables, operationName}),
         headers
@@ -386,6 +387,8 @@ async function execute(operation: { operationName: string, query: string, variab
 
 exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
     // Set all the config settings pre-bootstrap
+    loadedPluginOptions.craftGqlUrl = pluginOptions.craftGqlUrl ?? loadedPluginOptions.craftGqlUrl;
+    loadedPluginOptions.craftGqlToken = pluginOptions.craftGqlToken ?? loadedPluginOptions.craftGqlToken;
     loadedPluginOptions.concurrency = pluginOptions.concurrency ?? loadedPluginOptions.concurrency;
     loadedPluginOptions.debugDir = pluginOptions.debugDir ?? loadedPluginOptions.debugDir;
     loadedPluginOptions.fragmentsDir = pluginOptions.fragmentsDir ?? loadedPluginOptions.fragmentsDir;

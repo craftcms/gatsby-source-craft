@@ -1,5 +1,8 @@
 # Release Notes for Gatsby Helper
 
+## Unreleased
+- Craft GraphQL API settings can now also be configured using plugin settings.
+
 ## 1.0.0-beta.2 - 2020-11-26
 - Assets now have a `localFile` field, which can be used to generate transforms with `gatsby-transform-sharp`.
 

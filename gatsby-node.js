@@ -7,9 +7,9 @@ const path = require("path");
 const { print } = require("gatsby/graphql");
 const { sourceAllNodes, sourceNodeChanges, createSchemaCustomization, generateDefaultFragments, compileNodeQueries, buildNodeDefinitions, wrapQueryExecutorWithQueue, loadSchema, } = require("gatsby-graphql-source-toolkit");
 const { isInterfaceType, isListType } = require("graphql");
-const craftGqlToken = process.env.CRAFTGQL_TOKEN;
-const craftGqlUrl = process.env.CRAFTGQL_URL;
 const loadedPluginOptions = {
+    craftGqlToken: process.env.CRAFTGQL_TOKEN + "",
+    craftGqlUrl: process.env.CRAFTGQL_URL + "",
     concurrency: 10,
     debugDir: __dirname + "/.cache/craft-graphql-documents",
     fragmentsDir: __dirname + "/.cache/craft-fragments",
@@ -272,12 +272,12 @@ async function writeCompiledQueries(nodeDocs) {
  */
 async function execute(operation) {
     let { operationName, query, variables = {}, additionalHeaders = {} } = operation;
-    const headers = Object.assign({ "Content-Type": "application/json", Authorization: `Bearer ${craftGqlToken}` }, additionalHeaders);
+    const headers = Object.assign({ "Content-Type": "application/json", Authorization: `Bearer ${loadedPluginOptions.craftGqlToken}` }, additionalHeaders);
     // Set the token, if it exists
     if (previewToken) {
         headers['X-Craft-Token'] = previewToken;
     }
-    const res = await fetch(craftGqlUrl, {
+    const res = await fetch(loadedPluginOptions.craftGqlUrl, {
         method: "POST",
         body: JSON.stringify({ query, variables, operationName }),
         headers
@@ -287,15 +287,17 @@ async function execute(operation) {
     return await res.json();
 }
 exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     // Set all the config settings pre-bootstrap
-    loadedPluginOptions.concurrency = (_a = pluginOptions.concurrency) !== null && _a !== void 0 ? _a : loadedPluginOptions.concurrency;
-    loadedPluginOptions.debugDir = (_b = pluginOptions.debugDir) !== null && _b !== void 0 ? _b : loadedPluginOptions.debugDir;
-    loadedPluginOptions.fragmentsDir = (_c = pluginOptions.fragmentsDir) !== null && _c !== void 0 ? _c : loadedPluginOptions.fragmentsDir;
-    loadedPluginOptions.typePrefix = (_d = pluginOptions.typePrefix) !== null && _d !== void 0 ? _d : loadedPluginOptions.typePrefix;
-    loadedPluginOptions.looseInterfaces = (_e = pluginOptions.looseInterfaces) !== null && _e !== void 0 ? _e : loadedPluginOptions.looseInterfaces;
-    loadedPluginOptions.sourcingParams = (_f = pluginOptions.sourcingParams) !== null && _f !== void 0 ? _f : loadedPluginOptions.sourcingParams;
-    loadedPluginOptions.enabledSites = (_g = pluginOptions.enabledSites) !== null && _g !== void 0 ? _g : loadedPluginOptions.enabledSites;
+    loadedPluginOptions.craftGqlUrl = (_a = pluginOptions.craftGqlUrl) !== null && _a !== void 0 ? _a : loadedPluginOptions.craftGqlUrl;
+    loadedPluginOptions.craftGqlToken = (_b = pluginOptions.craftGqlToken) !== null && _b !== void 0 ? _b : loadedPluginOptions.craftGqlToken;
+    loadedPluginOptions.concurrency = (_c = pluginOptions.concurrency) !== null && _c !== void 0 ? _c : loadedPluginOptions.concurrency;
+    loadedPluginOptions.debugDir = (_d = pluginOptions.debugDir) !== null && _d !== void 0 ? _d : loadedPluginOptions.debugDir;
+    loadedPluginOptions.fragmentsDir = (_e = pluginOptions.fragmentsDir) !== null && _e !== void 0 ? _e : loadedPluginOptions.fragmentsDir;
+    loadedPluginOptions.typePrefix = (_f = pluginOptions.typePrefix) !== null && _f !== void 0 ? _f : loadedPluginOptions.typePrefix;
+    loadedPluginOptions.looseInterfaces = (_g = pluginOptions.looseInterfaces) !== null && _g !== void 0 ? _g : loadedPluginOptions.looseInterfaces;
+    loadedPluginOptions.sourcingParams = (_h = pluginOptions.sourcingParams) !== null && _h !== void 0 ? _h : loadedPluginOptions.sourcingParams;
+    loadedPluginOptions.enabledSites = (_j = pluginOptions.enabledSites) !== null && _j !== void 0 ? _j : loadedPluginOptions.enabledSites;
     // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir);
     await fs.ensureDir(loadedPluginOptions.fragmentsDir);

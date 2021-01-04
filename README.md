@@ -67,11 +67,24 @@ npm install --save-dev gatsby-source-craft
 
 #### 2. Configure the Source Plugin
 
-You’ll need to provide Gatsby with access to the Craft GraphQL endpoint. It can be done via plugin settings, but, usually, it’s done by editing your Gatsby project’s `.env` file with environment variables that specify your Craft CMS GraphQL endpoint and token:
+You’ll need to provide Gatsby with access to Craft’s GraphQL endpoint. You can do this using `CRAFTGQL_TOKEN` and `CRAFTGQL_URL` in the Gatsby project’s `.env` file, or using the plugin setting’s `craftGqlToken` and `craftGqlUrl` options.
 
 ```title:.env
 CRAFTGQL_TOKEN=your-graphql-token
 CRAFTGQL_URL=https://your-craftcms-site.test/api
+```
+
+```title:gatsby-config.js
+  // ...
+  plugins: [
+    {
+      resolve: `gatsby-source-craft`,
+      options: {
+        craftGqlToken: `your-graphql-token`,
+        craftGqlUrl: `https://your-craftcms-site.test/api`
+      }
+  ]
+  // ...
 ```
 
 You’ll also need to add the Gatsby source plugin in [your `gatsby-config.js` file’s `plugins` array](https://www.gatsbyjs.com/docs/configuring-usage-with-plugin-options/#where-to-access-plugin-options):

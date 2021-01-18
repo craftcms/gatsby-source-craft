@@ -502,30 +502,33 @@ exports.createResolvers = async ({ createResolvers, intermediateSchema,  actions
     const { createNode } = actions;
     const ifaceName = loadedPluginOptions.typePrefix + 'AssetInterface';
     const iface = intermediateSchema.getType(ifaceName) as GraphQLInterfaceType;
-    const possibleTypes = intermediateSchema.getPossibleTypes(iface);
-    const resolvers: {[key: string] : any}  = {};
+    
+    if (iface) {
+        const possibleTypes = intermediateSchema.getPossibleTypes(iface);
+        const resolvers: {[key: string] : any}  = {};
 
-    for (const assetType of possibleTypes) {
-        resolvers[assetType] = {
-            localFile: {
-                type: `File`,
-                async resolve(source: any) {
-                    if (source.url) {
-                        return await createRemoteFileNode({
-                            url: source.url,
-                            store,
-                            cache,
-                            createNode,
-                            createNodeId,
-                            reporter
-                        });
-                    }
+        for (const assetType of possibleTypes) {
+            resolvers[assetType] = {
+                localFile: {
+                    type: `File`,
+                    async resolve(source: any) {
+                        if (source.url) {
+                            return await createRemoteFileNode({
+                                url: source.url,
+                                store,
+                                cache,
+                                createNode,
+                                createNodeId,
+                                reporter
+                            });
+                        }
+                    },
                 },
-            },
+            }
         }
-    }
 
-    createResolvers(resolvers);
+        createResolvers(resolvers);
+    }
 }
 
 // Source the actual Gatsby nodes

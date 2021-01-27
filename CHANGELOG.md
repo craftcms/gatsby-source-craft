@@ -4,6 +4,7 @@
 - Craft GraphQL API settings can now also be configured using plugin settings.
 - Fix an error where the plugin assumed at least one Asset Volume exposed. ([#18](https://github.com/craftcms/gatsby-source-craft/issues/18))
 - Fix a bug where impossible fields were allowed in the Gatsby GraphQL schema.
+- Fix a bug where it was not possible to source Craft sites in rare cases. ([#19](https://github.com/craftcms/gatsby-source-craft/issues/19))
 
 ## 1.0.0-beta.2 - 2020-11-26
 - Assets now have a `localFile` field, which can be used to generate transforms with `gatsby-transform-sharp`.

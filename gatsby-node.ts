@@ -449,9 +449,10 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
             return fieldType.replace(/^([^a-z]+)?([a-z_]+)([^a-z]+)?$/i, '$1' + loadedPluginOptions.typePrefix + '$2$3');
         }
 
+        // For all interfaces
         if (craftTypesByInterface[craftInterface]) {
             if (loadedPluginOptions.looseInterfaces) {
-                // Collect all fields across all implementations of the interface
+                // Collect all fields across all implementations of the interface if loose interfaces are enabled
                 for (let gqlType of craftTypesByInterface[craftInterface]) {
                     for (let field of Object.values(gqlType.getFields())) {
                         let extractedType = extractFieldType(field, true);
@@ -462,6 +463,7 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
                     }
                 }
             } else if (craftFieldsByInterface[craftInterface]) {
+                // Otherwise just collect the interface fields
                 for (let field of Object.values(craftFieldsByInterface[craftInterface])) {
                     let extractedType = extractFieldType(field, false);
 
@@ -471,22 +473,23 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
                 }
             }
 
-            // Combine into one large field-defining-string
+            // Create a string of all the fields we found.
             for (let [fieldName, fieldType] of Object.entries(extraFields)) {
                 extraFieldsAsString += `${fieldName}: ${fieldType}
             `;
             }
 
-            // And now redefine all the implementations to have all the fields.
-            for (let gqlType of craftTypesByInterface[craftInterface]) {
-                redefineTypes += `type ${loadedPluginOptions.typePrefix}${gqlType.name} {
-                id: ID!
-                ${extraFieldsAsString}
-            }
-            `;
+            // If loose interfaces are enabled, redefine the types, too.
+            if (loadedPluginOptions.looseInterfaces) {
+                // And now redefine all the implementations to have all the fields.
+                for (let gqlType of craftTypesByInterface[craftInterface]) {
+                    redefineTypes += `type ${loadedPluginOptions.typePrefix}${gqlType.name} {
+                        id: ID!
+                        ${extraFieldsAsString}
+                    }`;
+                }
             }
         }
-
 
         typeDefs += `
             interface ${loadedPluginOptions.typePrefix}${craftInterface} @nodeInterface { 

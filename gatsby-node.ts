@@ -428,8 +428,15 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
             let fieldType = field.type.toString();
 
             // If only nullable and is non-nullable
-            if (onlyNullable && fieldType.charAt(-1) == '!') {
+            if (onlyNullable && fieldType.slice(-1) == '!') {
                 return false;
+            }
+
+            // If any arguments are required, can't have it.
+            for (let fieldArgument of field.args) {
+                if (fieldArgument.type.toString().slice(-1) == '!') {
+                    return false;
+                }
             }
 
             // Convert Craft's DateTime to Gatsby's Date.

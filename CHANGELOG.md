@@ -1,10 +1,9 @@
-# Release Notes for Gatsby Helper
+# Release Notes
 
-## Unreleased
-- Craft GraphQL API settings can now also be configured using plugin settings.
-- Fix an error where the plugin assumed at least one Asset Volume exposed. ([#18](https://github.com/craftcms/gatsby-source-craft/issues/18))
-- Fix a bug where impossible fields were allowed in the Gatsby GraphQL schema.
-- Fix a bug where it was not possible to source Craft sites in rare cases. ([#19](https://github.com/craftcms/gatsby-source-craft/issues/19))
+## 1.0.0-beta.3 - 2021-01-27
+- Craft’s GraphQL API settings can now also be configured from the [Gatsby Helper](https://plugins.craftcms.com/gatsby-helper) plugin settings.
+- Fixed a couple errors that could occur when building the Gatsby site. ([#18](https://github.com/craftcms/gatsby-source-craft/issues/18), [#19](https://github.com/craftcms/gatsby-source-craft/issues/19))
+- Fixed a bug where some fields that couldn’t be resolved automatically were getting included in Gatsby’s GraphQL schema.
 
 ## 1.0.0-beta.2 - 2020-11-26
 - Assets now have a `localFile` field, which can be used to generate transforms with `gatsby-transform-sharp`.

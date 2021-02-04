@@ -27,16 +27,16 @@
   },
   "dependencies": {
     "fs-extra": "^9.0.1",
-    "gatsby": "^2.24.68",
     "gatsby-graphql-source-toolkit": "^0.6.0",
     "gatsby-source-filesystem": "^2.3.25",
-    "node-fetch": "^2.6.1",
-    "react": "^16.12.0",
-    "react-dom": "^16.12.0"
+    "node-fetch": "^2.6.1"
   },
   "devDependencies": {
     "@types/fs-extra": "^9.0.1",
     "dotenv": "^8.2.0",
     "prettier": "2.0.5"
+  },
+  "peerDependencies": {
+    "gatsby": "^2.24.68"
   }
 }

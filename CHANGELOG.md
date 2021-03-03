@@ -1,5 +1,8 @@
 # Release Notes
 
+## Unreleased
+- Fixed a bug where it was impossible to query the `localFile` field on Assets that contained non-Ascii characters in the URL. ([#25](https://github.com/craftcms/gatsby-source-craft/issues/25))
+
 ## 1.0.0-beta.3 - 2021-01-27
 - Craft’s GraphQL API settings can now also be configured from the [Gatsby Helper](https://plugins.craftcms.com/gatsby-helper) plugin settings.
 - Fixed a couple errors that could occur when building the Gatsby site. ([#18](https://github.com/craftcms/gatsby-source-craft/issues/18), [#19](https://github.com/craftcms/gatsby-source-craft/issues/19))

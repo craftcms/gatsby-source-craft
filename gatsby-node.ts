@@ -524,7 +524,7 @@ exports.createResolvers = async ({ createResolvers, intermediateSchema,  actions
                     async resolve(source: any) {
                         if (source.url) {
                             return await createRemoteFileNode({
-                                url: source.url,
+                                url: encodeURI(source.url),
                                 store,
                                 cache,
                                 createNode,

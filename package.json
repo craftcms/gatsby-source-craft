@@ -35,10 +35,10 @@
     "@types/fs-extra": "^9.0.1",
     "dotenv": "^8.2.0",
     "prettier": "2.0.5",
-    "gatsby": "^2.24.68",
-    "graphql": "^14.0"
+    "gatsby": "^3.0.0",
+    "graphql": "^15.0.0"
   },
   "peerDependencies": {
-    "gatsby": "^2.24.68"
+    "gatsby": "^3.0.0"
   }
 }

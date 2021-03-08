@@ -492,7 +492,7 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
         }
 
         typeDefs += `
-            interface ${loadedPluginOptions.typePrefix}${craftInterface} @nodeInterface { 
+            interface ${loadedPluginOptions.typePrefix}${craftInterface} implements Node { 
                 id: ID!
                 ${extraFieldsAsString}
             }

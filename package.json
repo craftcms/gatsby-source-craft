@@ -1,6 +1,6 @@
 {
   "name": "gatsby-source-craft",
-  "version": "1.0.0-beta.3",
+  "version": "2.0.0",
   "description": "Gatsby source plugin for Craft CMS",
   "keywords": [
     "gatsby",
@@ -27,16 +27,18 @@
   },
   "dependencies": {
     "fs-extra": "^9.0.1",
-    "gatsby-graphql-source-toolkit": "^0.6.0",
-    "gatsby-source-filesystem": "^2.3.25",
+    "gatsby-graphql-source-toolkit": "^1.0.0",
+    "gatsby-source-filesystem": "^3.0.0",
     "node-fetch": "^2.6.1"
   },
   "devDependencies": {
     "@types/fs-extra": "^9.0.1",
     "dotenv": "^8.2.0",
-    "prettier": "2.0.5"
+    "prettier": "2.0.5",
+    "gatsby": "^3.0.0",
+    "graphql": "^15.0.0"
   },
   "peerDependencies": {
-    "gatsby": "^2.24.68"
+    "gatsby": "^3.0.0"
   }
 }

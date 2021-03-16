@@ -61,7 +61,11 @@ You may optionally designate a **Preview webhook target URL** in the plugin sett
 
 Install the Gatsby source plugin by running the following command in your terminal:
 
-```
+```bash
+# Gatsby 2
+npm install --save-dev gatsby-source-craft@^1
+
+# Gatsby 3
 npm install --save-dev gatsby-source-craft
 ```
 
@@ -585,4 +589,3 @@ We highly recommend you check out these resources as you’re getting started wi
 - **[Gatsby Tutorials](https://www.gatsbyjs.com/tutorial/)** - best place to start if you’re new to Gatsby.
 - **[Craft Discord](https://craftcms.com/discord)** – one of the most friendly and helpful Discords on the planet.
 - **[Craft Stack Exchange](http://craftcms.stackexchange.com/)** – community-run Q&A for Craft developers.
-

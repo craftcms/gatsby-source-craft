@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 1.0.0 - 2021-03-16
 - Fixed a bug where it wasn’t possible to query the `localFile` field on assets that contained non-ASCII characters in the URL. ([#25](https://github.com/craftcms/gatsby-source-craft/issues/25))
 
 ## 1.0.0-beta.3 - 2021-01-27

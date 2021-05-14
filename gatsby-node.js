@@ -165,19 +165,6 @@ async function getGatsbyNodeTypes() {
             let queries = '';
             let fragmentInfo = fragmentHelper(typeName, canBeDraft);
             queries = fragmentInfo.fragment;
-            // and define queries for the concrete type
-            if (sourceNodeInformation.node) {
-                queries += `query NODE_${typeName} { ${sourceNodeInformation.node}(id: $id siteId: $siteId, status: ["live", "pending"]) { ... ${fragmentInfo.fragmentName}  } }
-                `;
-            }
-            let typeFilter = '';
-            if (sourceNodeInformation.filterArgument) {
-                let regexp = new RegExp(sourceNodeInformation.filterTypeExpression);
-                const matches = typeName.match(regexp);
-                if (matches && matches[1]) {
-                    typeFilter = sourceNodeInformation.filterArgument + ': "' + matches[1] + '"';
-                }
-            }
             // Add sourcing parameters defined by user to the sourcing queries
             let configuredParameters = {};
             // Interfaces first
@@ -192,6 +179,19 @@ async function getGatsbyNodeTypes() {
             let configuredParameterString = '';
             for (const [key, value] of Object.entries(configuredParameters)) {
                 configuredParameterString += `${key}: ${value} `;
+            }
+            // and define queries for the concrete type
+            if (sourceNodeInformation.node) {
+                queries += `query NODE_${typeName} { ${sourceNodeInformation.node}(id: $id siteId: $siteId ${configuredParameterString}) { ... ${fragmentInfo.fragmentName}  } }
+                `;
+            }
+            let typeFilter = '';
+            if (sourceNodeInformation.filterArgument) {
+                let regexp = new RegExp(sourceNodeInformation.filterTypeExpression);
+                const matches = typeName.match(regexp);
+                if (matches && matches[1]) {
+                    typeFilter = sourceNodeInformation.filterArgument + ': "' + matches[1] + '"';
+                }
             }
             queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset site: ${craftSites} ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
             `;

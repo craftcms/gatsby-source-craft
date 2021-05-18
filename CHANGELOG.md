@@ -1,5 +1,8 @@
 # Release Notes
 
+## Unreleased
+- Fixed a bug where Gatsby would be unable to source pending elements. ([#30](https://github.com/craftcms/gatsby-source-craft/issues/30))
+
 ## 2.0.0 - 2021-03-16
 - Added support for Gatsby 3.
 

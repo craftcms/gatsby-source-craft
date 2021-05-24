@@ -1,15 +1,12 @@
 # Release Notes
 
-## Unreleased
-- Compiled TypeScript to Javascript so that 2.0.1 changes actually take effect.
-
-## 2.0.1 - 2021-05-21
+## 2.0.2 - 2021-05-24
 - Fixed a bug where it wasn’t possible for Gatsby to source non-live elements. ([#30](https://github.com/craftcms/gatsby-source-craft/issues/30))
 
 ## 2.0.0 - 2021-03-16
 - Added support for Gatsby 3.
 
-## 1.0.1 - 2021-05-21
+## 1.0.2 - 2021-05-24
 - Fixed a bug where it wasn’t possible for Gatsby to source non-live elements. ([#30](https://github.com/craftcms/gatsby-source-craft/issues/30))
 
 ## 1.0.0 - 2021-03-16

@@ -167,7 +167,7 @@ async function getGatsbyNodeTypes() {
             queries = fragmentInfo.fragment;
             // and define queries for the concrete type
             if (sourceNodeInformation.node) {
-                queries += `query NODE_${typeName} { ${sourceNodeInformation.node}(id: $id siteId: $siteId) { ... ${fragmentInfo.fragmentName}  } }
+                queries += `query NODE_${typeName} { ${sourceNodeInformation.node}(id: $id siteId: $siteId status: null) { ... ${fragmentInfo.fragmentName}  } }
                 `;
             }
             let typeFilter = '';

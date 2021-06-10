@@ -126,7 +126,7 @@ Now you’re ready to [query Craft CMS content](#fetching-craft-content) and bui
 
 Craft’s flexible content schema is accessible to front ends via [Element Queries](https://craftcms.com/docs/3.x/element-queries.html) and a similar public GraphQL API. This Gatsby source plugin, combined with its companion Craft CMS plugin, translates your Craft project schema specifically for Gatsby’s internal GraphQL API.
 
-<img src="graphql-diagram.png" alt="Diagram of Craft CMS via source plugin to private Gatsby GraphQL">
+<img src="https://raw.githubusercontent.com/craftcms/gatsby-source-craft/main/graphql-diagram.png" alt="Diagram of Craft CMS via source plugin to private Gatsby GraphQL">
 
 Gatsby uses source plugins like this to collect content from any number of sources (local markdown, REST and GraphQL APIs, etc.) and combine them in a single, consistent GraphQL API that can be used to build a [React](https://reactjs.org/)-based front end.
 

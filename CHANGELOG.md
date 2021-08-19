@@ -1,5 +1,8 @@
 # Release Notes
 
+## 2.0.3 - 2021-08-19
+- Updated gatsby-graphql-source-toolkit to 2.x.
+
 ## 2.0.2 - 2021-05-24
 - Fixed a bug where it wasn’t possible for Gatsby to source non-live elements. ([#30](https://github.com/craftcms/gatsby-source-craft/issues/30))
 

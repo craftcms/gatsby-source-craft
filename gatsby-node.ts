@@ -72,7 +72,7 @@ let craftTypesByInterface: { [key: string]: [GraphQLObjectType] } = {};
 let craftFieldsByInterface: { [key: string]: [GraphQLField<any, any>] } = {};
 
 let craftPrimarySiteId = '';
-
+let craftEnabledSites = '';
 /**
  * Fetch the schema
  */
@@ -208,16 +208,14 @@ async function getGatsbyNodeTypes() {
 
     gatsbyNodeTypes = [];
 
-    let craftSites = '';
-
     if (loadedPluginOptions.enabledSites) {
         if (typeof loadedPluginOptions.enabledSites == "object") {
-            craftSites = `["${loadedPluginOptions.enabledSites.join('", "')}"]`;
+            craftEnabledSites = `["${loadedPluginOptions.enabledSites.join('", "')}"]`;
         } else {
-            craftSites = `"${loadedPluginOptions.enabledSites}"`;
+            craftEnabledSites = `"${loadedPluginOptions.enabledSites}"`;
         }
     } else {
-        craftSites = `"${craftPrimarySiteId}"`;
+        craftEnabledSites = `"${craftPrimarySiteId}"`;
     }
 
 
@@ -267,7 +265,7 @@ async function getGatsbyNodeTypes() {
                 configuredParameterString += `${key}: ${value} `;
             }
 
-            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset site: ${craftSites} ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
+            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset site: ${craftEnabledSites} ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
             `;
 
             return queries;
@@ -608,7 +606,7 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
         const {data} = await execute({
             operationName: 'nodeChanges',
             query: `query nodeChanges {  
-                nodesUpdatedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
+                nodesUpdatedSince (since: "${localContentUpdateTime}" site: ${craftEnabledSites}) { nodeId nodeType siteId}
                 nodesDeletedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
             }`,
             variables: {},

@@ -30,6 +30,7 @@ let craftInterfaces = [];
 let craftTypesByInterface = {};
 let craftFieldsByInterface = {};
 let craftPrimarySiteId = '';
+let craftEnabledSites = '';
 /**
  * Fetch the schema
  */
@@ -146,17 +147,16 @@ async function getGatsbyNodeTypes() {
         };
     };
     gatsbyNodeTypes = [];
-    let craftSites = '';
     if (loadedPluginOptions.enabledSites) {
         if (typeof loadedPluginOptions.enabledSites == "object") {
-            craftSites = `["${loadedPluginOptions.enabledSites.join('", "')}"]`;
+            craftEnabledSites = `["${loadedPluginOptions.enabledSites.join('", "')}"]`;
         }
         else {
-            craftSites = `"${loadedPluginOptions.enabledSites}"`;
+            craftEnabledSites = `"${loadedPluginOptions.enabledSites}"`;
         }
     }
     else {
-        craftSites = `"${craftPrimarySiteId}"`;
+        craftEnabledSites = `"${craftPrimarySiteId}"`;
     }
     // For all the mapped queries
     for (let [interfaceName, sourceNodeInformation] of Object.entries(queryMap)) {
@@ -193,7 +193,7 @@ async function getGatsbyNodeTypes() {
             for (const [key, value] of Object.entries(configuredParameters)) {
                 configuredParameterString += `${key}: ${value} `;
             }
-            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset site: ${craftSites} ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
+            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset site: ${craftEnabledSites} ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
             `;
             return queries;
         }));
@@ -475,7 +475,7 @@ exports.sourceNodes = async (gatsbyApi) => {
         const { data } = await execute({
             operationName: 'nodeChanges',
             query: `query nodeChanges {  
-                nodesUpdatedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
+                nodesUpdatedSince (since: "${localContentUpdateTime}" site: ${craftEnabledSites}) { nodeId nodeType siteId}
                 nodesDeletedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
             }`,
             variables: {},

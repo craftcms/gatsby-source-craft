@@ -1,7 +1,7 @@
 # Release Notes
 
-## Unreleased
-- Improved multi-site support when elements are not enabled for all sites. ([#50](https://github.com/craftcms/gatsby-source-craft/issues/50))
+## 2.0.4 - 2021-10-19
+- Improved multi-site support for elements that aren’t enabled for all sites. ([#50](https://github.com/craftcms/gatsby-source-craft/issues/50))
 
 ## 2.0.3 - 2021-08-19
 - Updated gatsby-graphql-source-toolkit to 2.x.

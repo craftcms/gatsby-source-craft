@@ -286,9 +286,9 @@ async function execute(operation) {
     previewToken = null;
     return await res.json();
 }
-exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
+async function initializePlugin(pluginOptions, gatsbyApi) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j;
-    // Set all the config settings pre-bootstrap
+    // Initialize the plugin options
     loadedPluginOptions.craftGqlUrl = (_a = pluginOptions.craftGqlUrl) !== null && _a !== void 0 ? _a : loadedPluginOptions.craftGqlUrl;
     loadedPluginOptions.craftGqlToken = (_b = pluginOptions.craftGqlToken) !== null && _b !== void 0 ? _b : loadedPluginOptions.craftGqlToken;
     loadedPluginOptions.concurrency = (_c = pluginOptions.concurrency) !== null && _c !== void 0 ? _c : loadedPluginOptions.concurrency;
@@ -303,6 +303,9 @@ exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
     await fs.ensureDir(loadedPluginOptions.fragmentsDir);
     // Make sure the fragments exist
     await ensureFragmentsExist(gatsbyApi.reporter);
+}
+exports.onPluginInit = async (gatsbyApi, pluginOptions) => {
+    await initializePlugin(pluginOptions, gatsbyApi);
 };
 exports.createSchemaCustomization = async (gatsbyApi) => {
     const config = await getSourcingConfig(gatsbyApi);

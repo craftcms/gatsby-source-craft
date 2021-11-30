@@ -19,9 +19,6 @@ const loadedPluginOptions = {
     enabledSites: null
 };
 const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
-const mandatoryFragments = {
-    ensureRemoteId: 'fragment RequiredEntryFields on EntryInterface { id }'
-};
 let schema;
 let gatsbyNodeTypes;
 let sourcingConfig;
@@ -31,6 +28,8 @@ let craftTypesByInterface = {};
 let craftFieldsByInterface = {};
 let craftPrimarySiteId = '';
 let craftEnabledSites = '';
+let gatsbyHelperVersion = '';
+let craftGqlTypePrefix = '';
 /**
  * Fetch the schema
  */
@@ -43,7 +42,7 @@ async function getSchema() {
 /**
  * Return a list of all possible Gatsby node types
  */
-async function getGatsbyNodeTypes() {
+async function getGatsbyNodeTypes(reporter) {
     var _a;
     if (gatsbyNodeTypes) {
         return gatsbyNodeTypes;
@@ -53,13 +52,23 @@ async function getGatsbyNodeTypes() {
     if (!queries) {
         return ([]);
     }
+    gatsbyNodeTypes = [];
     // Check if Craft endpoint has Gatsby plugin installed and enabled.
     if (!queries.sourceNodeInformation) {
+        reporter.info("Gatsby Helper not found on target Craft site.");
         return ([]);
+    }
+    if (!queries.gatsbyHelperVersion) {
+        reporter.info("Gatsby Helper plugin must be at least version 1.0.9 or greater.");
     }
     const queryResponse = await execute({
         operationName: 'sourceNodeData',
-        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression targetInterface } primarySiteId }',
+        query: `query sourceNodeData { 
+            sourceNodeInformation { node list filterArgument filterTypeExpression targetInterface } 
+            primarySiteId
+            gatsbyHelperVersion
+            gqlTypePrefix 
+            }`,
         variables: {},
         additionalHeaders: {
             "X-Craft-Gql-Cache": "no-cache"
@@ -68,6 +77,8 @@ async function getGatsbyNodeTypes() {
     if (!(queryResponse.data && queryResponse.data.sourceNodeInformation)) {
         return ([]);
     }
+    craftGqlTypePrefix = queryResponse.data.gqlTypePrefix;
+    gatsbyHelperVersion = queryResponse.data.gatsbyHelperVersion;
     craftPrimarySiteId = queryResponse.data.primarySiteId;
     const sourceNodeInformation = queryResponse.data.sourceNodeInformation;
     const queryMap = {};
@@ -146,7 +157,6 @@ async function getGatsbyNodeTypes() {
             `
         };
     };
-    gatsbyNodeTypes = [];
     if (loadedPluginOptions.enabledSites) {
         if (typeof loadedPluginOptions.enabledSites == "object") {
             craftEnabledSites = `["${loadedPluginOptions.enabledSites.join('", "')}"]`;
@@ -203,10 +213,10 @@ async function getGatsbyNodeTypes() {
 /**
  * Write default fragments to the disk.
  */
-async function writeDefaultFragments() {
+async function writeDefaultFragments(reporter) {
     const defaultFragments = generateDefaultFragments({
         schema: await getSchema(),
-        gatsbyNodeTypes: await getGatsbyNodeTypes(),
+        gatsbyNodeTypes: await getGatsbyNodeTypes(reporter),
     });
     await fs.ensureDir(internalFragmentDir);
     for (const [remoteTypeName, fragment] of defaultFragments) {
@@ -219,6 +229,9 @@ async function writeDefaultFragments() {
 async function addExtraFragments(reporter) {
     const fragmentDir = loadedPluginOptions.fragmentsDir;
     const fragments = await fs.readdir(fragmentDir);
+    const mandatoryFragments = {
+        ensureRemoteId: `fragment RequiredEntryFields on ${craftGqlTypePrefix}EntryInterface { id }`
+    };
     // Add mandatory fragments
     for (let [fragmentName, fragmentBody] of Object.entries(mandatoryFragments)) {
         fragmentName += '.graphql';
@@ -331,7 +344,7 @@ exports.createSchemaCustomization = async (gatsbyApi) => {
                 }
             }
             // Convert Craft's DateTime to Gatsby's Date.
-            fieldType = fieldType.replace(/DateTime/, 'JSON');
+            fieldType = fieldType.replace(new RegExp(craftGqlTypePrefix + 'DateTime'), 'JSON');
             if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!\]|$)/)) {
                 return fieldType;
             }
@@ -519,7 +532,7 @@ async function getSourcingConfig(gatsbyApi) {
         return sourcingConfig;
     }
     const schema = await getSchema();
-    const gatsbyNodeTypes = await getGatsbyNodeTypes();
+    const gatsbyNodeTypes = await getGatsbyNodeTypes(gatsbyApi.reporter);
     const documents = await compileNodeQueries({
         schema,
         gatsbyNodeTypes,
@@ -539,6 +552,6 @@ async function ensureFragmentsExist(reporter) {
     reporter.info("Clearing previous fragments.");
     await fs.remove(internalFragmentDir, { recursive: true });
     reporter.info("Writing default fragments.");
-    await writeDefaultFragments();
+    await writeDefaultFragments(reporter);
     await addExtraFragments(reporter);
 }

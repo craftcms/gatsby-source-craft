@@ -1,5 +1,9 @@
 # Release Notes
 
+## Unreleased
+- Fixed an error where it was impossible to build a site if the `gqlTypePrefix` setting was enabled on the Craft site. ([#58](https://github.com/craftcms/gatsby-source-craft/issues/58))
+- Bumped Gatsby Helper plugin version requirements to at least 1.0.9.
+
 ## 2.0.4 - 2021-10-19
 - Improved multi-site support for elements that aren’t enabled for all sites. ([#50](https://github.com/craftcms/gatsby-source-craft/issues/50))
 

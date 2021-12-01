@@ -1,6 +1,7 @@
 # Release Notes
 
 ## Unreleased
+- If Craft version on the sourcing site is 3.7.0 or later, use `canonicalId` instead of`sourceId` when constructing Node ids.
 - Fixed an error where it was impossible to build a site if the `gqlTypePrefix` setting was enabled on the Craft site. ([#58](https://github.com/craftcms/gatsby-source-craft/issues/58))
 - Bumped Gatsby Helper plugin version requirements to at least 1.1.0.
 

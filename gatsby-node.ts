@@ -525,7 +525,7 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
 // Add `localFile` nodes to assets.
 exports.createResolvers = async ({ createResolvers, intermediateSchema,  actions, cache, createNodeId, store, reporter }) => {
     const { createNode } = actions;
-    const ifaceName = loadedPluginOptions.typePrefix + 'AssetInterface';
+    const ifaceName = `${loadedPluginOptions.typePrefix + craftGqlTypePrefix}AssetInterface`;
     const iface = intermediateSchema.getType(ifaceName) as GraphQLInterfaceType;
     
     if (iface) {

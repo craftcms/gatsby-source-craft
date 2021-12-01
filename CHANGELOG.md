@@ -1,9 +1,9 @@
 # Release Notes
 
-## Unreleased
-- If Craft version on the sourcing site is 3.7.0 or later, use `canonicalId` instead of`sourceId` when constructing Node ids.
-- Fixed an error where it was impossible to build a site if the `gqlTypePrefix` setting was enabled on the Craft site. ([#58](https://github.com/craftcms/gatsby-source-craft/issues/58))
-- Bumped Gatsby Helper plugin version requirements to at least 1.1.0.
+## 2.0.5 - 2021-12-01
+- Gatsby Helper 1.1.0 or later is now required.
+- Fixed an incompatibility with Craft’s `gqlTypePrefix` config setting. ([#58](https://github.com/craftcms/gatsby-source-craft/issues/58))
+- Fixed a deprecation error when using Craft 3.7 or later.
 
 ## 2.0.4 - 2021-10-19
 - Improved multi-site support for elements that aren’t enabled for all sites. ([#50](https://github.com/craftcms/gatsby-source-craft/issues/50))

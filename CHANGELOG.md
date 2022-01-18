@@ -1,4 +1,6 @@
 # Release Notes
+## 3.0.0 - Unreleased
+- Added support for Gatsby 4.
 
 ## 2.0.5 - 2021-12-01
 - Gatsby Helper 1.1.0 or later is now required.

@@ -1,6 +1,6 @@
 {
   "name": "gatsby-source-craft",
-  "version": "2.0.5",
+  "version": "3.0.0",
   "description": "Gatsby source plugin for Craft CMS",
   "keywords": [
     "gatsby",

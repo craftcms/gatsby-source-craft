@@ -1,5 +1,11 @@
 import {GraphQLSchema} from "graphql";
-import {GraphQLAbstractType, GraphQLField, GraphQLInterfaceType, GraphQLObjectType} from "graphql/type/definition";
+import {
+    GraphQLAbstractType,
+    GraphQLField,
+    GraphQLInterfaceType,
+    GraphQLObjectType,
+    GraphQLType
+} from "graphql/type/definition";
 import {IGatsbyNodeConfig, IGatsbyNodeDefinition, ISourcingConfig} from "gatsby-graphql-source-toolkit/dist/types";
 import {NodePluginArgs, Reporter} from "gatsby";
 import {createRemoteFileNode} from "gatsby-source-filesystem";
@@ -13,7 +19,7 @@ type SourcePluginOptions = {
     typePrefix: string,
     looseInterfaces: boolean,
     sourcingParams: { [key: string]: { [key:string] : string}},
-    enabledSites: string|[string]|null
+    enabledSites: string|[string]|null,
 }
 
 type ModifiedNodeInfo = {
@@ -55,13 +61,10 @@ const loadedPluginOptions: SourcePluginOptions = {
     typePrefix: "Craft_",
     looseInterfaces: false,
     sourcingParams: {},
-    enabledSites: null
+    enabledSites: null,
 };
 
 const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
-const mandatoryFragments = {
-    ensureRemoteId: 'fragment RequiredEntryFields on EntryInterface { id }'
-}
 
 let schema: GraphQLSchema;
 let gatsbyNodeTypes: IGatsbyNodeConfig[];
@@ -73,6 +76,16 @@ let craftFieldsByInterface: { [key: string]: [GraphQLField<any, any>] } = {};
 
 let craftPrimarySiteId = '';
 let craftEnabledSites = '';
+
+let remoteConfigVersion = '';
+let lastUpdateTime = '';
+let gatsbyHelperVersion = '';
+let craftGqlTypePrefix = '';
+let craftVersion = '';
+
+let craftElementIdField = 'sourceId';
+let craftRemoveSourceFields = false;
+
 /**
  * Fetch the schema
  */
@@ -87,27 +100,31 @@ async function getSchema() {
 /**
  * Return a list of all possible Gatsby node types
  */
-async function getGatsbyNodeTypes() {
+async function getGatsbyNodeTypes(reporter: Reporter) {
+    if (!craftVersion.length) {
+        reporter.error('Unable to source nodes!');
+        return ([]);
+    }
+
     if (gatsbyNodeTypes) {
-        return gatsbyNodeTypes
+        return gatsbyNodeTypes;
     }
 
     const schema = await getSchema();
 
-    const queries = schema.getQueryType()?.getFields();
-
-    if (!queries) {
-        return ([]);
-    }
-
-    // Check if Craft endpoint has Gatsby plugin installed and enabled.
-    if (!queries.sourceNodeInformation) {
-        return ([]);
-    }
+    gatsbyNodeTypes = [];
 
     const queryResponse = await execute({
         operationName: 'sourceNodeData',
-        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression targetInterface } primarySiteId }',
+        query: `query sourceNodeData { 
+            sourceNodeInformation { 
+                node 
+                list 
+                filterArgument 
+                filterTypeExpression 
+                targetInterface 
+            } 
+        }`,
         variables: {},
         additionalHeaders: {
             "X-Craft-Gql-Cache": "no-cache"
@@ -118,7 +135,6 @@ async function getGatsbyNodeTypes() {
         return ([]);
     }
 
-    craftPrimarySiteId = queryResponse.data.primarySiteId;
 
     const sourceNodeInformation = queryResponse.data.sourceNodeInformation;
     const queryMap: { [key: string]: { list: string, node: string, filterArgument?: string, filterTypeExpression?: string } } = {};
@@ -162,7 +178,7 @@ async function getGatsbyNodeTypes() {
         }
 
         const canBeDraft = (input: unknown): boolean => {
-            return typeof input === 'object' && input !== null && '_fields' in input && 'sourceId' in (input as GraphQLObjectType).getFields();
+            return typeof input === 'object' && input !== null && '_fields' in input && craftElementIdField in (input as GraphQLObjectType).getFields();
         }
 
         return schema.getPossibleTypes(iface).map(type => {
@@ -193,7 +209,7 @@ async function getGatsbyNodeTypes() {
      */
     const fragmentHelper = (typeName: string, canBeDraft: boolean): { fragmentName: string, fragment: string } => {
         const fragmentName = '_Craft' + typeName + 'ID_';
-        const idProperty = canBeDraft ? 'sourceId' : 'id';
+        const idProperty = canBeDraft ? craftElementIdField : 'id';
         return {
             fragmentName: fragmentName,
             fragment: `
@@ -205,8 +221,6 @@ async function getGatsbyNodeTypes() {
             `
         };
     };
-
-    gatsbyNodeTypes = [];
 
     if (loadedPluginOptions.enabledSites) {
         if (typeof loadedPluginOptions.enabledSites == "object") {
@@ -278,10 +292,10 @@ async function getGatsbyNodeTypes() {
 /**
  * Write default fragments to the disk.
  */
-async function writeDefaultFragments() {
+async function writeDefaultFragments(reporter: Reporter) {
     const defaultFragments = generateDefaultFragments({
         schema: await getSchema(),
-        gatsbyNodeTypes: await getGatsbyNodeTypes(),
+        gatsbyNodeTypes: await getGatsbyNodeTypes(reporter),
     })
 
     await fs.ensureDir(internalFragmentDir)
@@ -297,6 +311,10 @@ async function writeDefaultFragments() {
 async function addExtraFragments (reporter: Reporter) {
     const fragmentDir = loadedPluginOptions.fragmentsDir;
     const fragments = await fs.readdir(fragmentDir);
+
+    const mandatoryFragments = {
+        ensureRemoteId: `fragment RequiredEntryFields on ${craftGqlTypePrefix}EntryInterface { id }`
+    }
 
     // Add mandatory fragments
     for (let [fragmentName, fragmentBody] of Object.entries(mandatoryFragments)) {
@@ -400,8 +418,61 @@ async function initializePlugin(pluginOptions: SourcePluginOptions, gatsbyApi: N
     await fs.ensureDir(loadedPluginOptions.debugDir)
     await fs.ensureDir(loadedPluginOptions.fragmentsDir)
 
+    // Fetch the meta data
+
+    const reporter = gatsbyApi.reporter;
+    reporter.info("Querying for Craft state.");
+    const schema = await getSchema();
+    const queries = schema.getQueryType()?.getFields();
+
+    if (!queries) {
+        reporter.info("Unable to fetch Craft schema.");
+        return;
+    }
+
+    // Check if Craft endpoint has Gatsby plugin installed and enabled.
+    if (!queries.sourceNodeInformation) {
+        reporter.info("Gatsby Helper not found on target Craft site.");
+        return;
+    }
+
+    if (!queries.craftVersion) {
+        reporter.info("Gatsby Helper plugin must be at least version 1.1.0 or greater.");
+    }
+
+
+    const {data} = await execute({
+        operationName: 'craftState',
+        query: `query craftState { 
+            configVersion 
+            lastUpdateTime 
+            primarySiteId
+            gatsbyHelperVersion
+            gqlTypePrefix 
+            craftVersion
+        }`,
+        variables: {},
+        additionalHeaders: {
+            "X-Craft-Gql-Cache": "no-cache"
+        }
+    });
+
+    remoteConfigVersion = data.configVersion;
+    lastUpdateTime = data.lastUpdateTime;
+    craftGqlTypePrefix = data.gqlTypePrefix;
+    gatsbyHelperVersion = data.gatsbyHelperVersion;
+    craftPrimarySiteId = data.primarySiteId;
+    craftVersion = data.craftVersion;
+
+    // Avoid deprecation errors
+    if (craftVersion >= '3.7.0') {
+        console.log('Switch to canonical?');
+        craftElementIdField = 'canonicalId';
+    }
+
+    reporter.info(`Craft v${craftVersion}, running Helper plugin v${gatsbyHelperVersion}`);
     // Make sure the fragments exist
-    await ensureFragmentsExist(gatsbyApi.reporter)
+    await ensureFragmentsExist(reporter)
 }
 
 exports.onPluginInit = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
@@ -443,7 +514,7 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
             }
 
             // Convert Craft's DateTime to Gatsby's Date.
-            fieldType = fieldType.replace(/DateTime/, 'JSON');
+            fieldType = fieldType.replace(new RegExp(craftGqlTypePrefix + 'DateTime'), 'JSON');
 
             if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!\]|$)/)) {
                 return fieldType;
@@ -459,7 +530,6 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
                 for (let gqlType of craftTypesByInterface[craftInterface]) {
                     for (let field of Object.values(gqlType.getFields())) {
                         let extractedType = extractFieldType(field, true);
-
                         if (extractedType) {
                             extraFields[field.name] = extractedType;
                         }
@@ -469,7 +539,6 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
                 // Otherwise just collect the interface fields
                 for (let field of Object.values(craftFieldsByInterface[craftInterface])) {
                     let extractedType = extractFieldType(field, false);
-
                     if (extractedType) {
                         extraFields[field.name] = extractedType;
                     }
@@ -513,9 +582,9 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
 // Add `localFile` nodes to assets.
 exports.createResolvers = async ({ createResolvers, intermediateSchema,  actions, cache, createNodeId, store, reporter }) => {
     const { createNode } = actions;
-    const ifaceName = loadedPluginOptions.typePrefix + 'AssetInterface';
+    const ifaceName = `${loadedPluginOptions.typePrefix + craftGqlTypePrefix}AssetInterface`;
     const iface = intermediateSchema.getType(ifaceName) as GraphQLInterfaceType;
-    
+
     if (iface) {
         const possibleTypes = intermediateSchema.getPossibleTypes(iface);
         const resolvers: {[key: string] : any}  = {};
@@ -583,20 +652,6 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
         return;
     }
 
-    reporter.info("Checking Craft config version.");
-
-    const {data} = await execute({
-        operationName: 'craftState',
-        query: 'query craftState { configVersion lastUpdateTime }',
-        variables: {},
-        additionalHeaders: {
-            "X-Craft-Gql-Cache": "no-cache"
-        }
-    });
-
-    const remoteConfigVersion = data.configVersion;
-    const remoteContentUpdateTime = data.lastUpdateTime;
-
     const localConfigVersion = (await cache.get(`CRAFT_CONFIG_VERSION`)) || '';
     const localContentUpdateTime = (await cache.get(`CRAFT_LAST_CONTENT_UPDATE`)) || '';
 
@@ -652,7 +707,7 @@ exports.sourceNodes = async (gatsbyApi: NodePluginArgs) => {
     }
 
     await cache.set(`CRAFT_CONFIG_VERSION`, remoteConfigVersion);
-    await cache.set(`CRAFT_LAST_CONTENT_UPDATE`, remoteContentUpdateTime);
+    await cache.set(`CRAFT_LAST_CONTENT_UPDATE`, lastUpdateTime);
 }
 
 async function getSourcingConfig(gatsbyApi: NodePluginArgs) {
@@ -660,7 +715,7 @@ async function getSourcingConfig(gatsbyApi: NodePluginArgs) {
         return sourcingConfig
     }
     const schema = await getSchema()
-    const gatsbyNodeTypes = await getGatsbyNodeTypes()
+    const gatsbyNodeTypes = await getGatsbyNodeTypes(gatsbyApi.reporter)
 
     const documents = await compileNodeQueries({
         schema,
@@ -685,6 +740,6 @@ async function ensureFragmentsExist(reporter: Reporter) {
     await fs.remove(internalFragmentDir, {recursive: true});
 
     reporter.info("Writing default fragments.");
-    await writeDefaultFragments();
+    await writeDefaultFragments(reporter);
     await addExtraFragments(reporter);
 }

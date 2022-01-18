@@ -1,5 +1,10 @@
 # Release Notes
 
+## 2.0.5 - 2021-12-01
+- Gatsby Helper 1.1.0 or later is now required.
+- Fixed an incompatibility with Craft’s `gqlTypePrefix` config setting. ([#58](https://github.com/craftcms/gatsby-source-craft/issues/58))
+- Fixed a deprecation error when using Craft 3.7 or later.
+
 ## 2.0.4 - 2021-10-19
 - Improved multi-site support for elements that aren’t enabled for all sites. ([#50](https://github.com/craftcms/gatsby-source-craft/issues/50))
 

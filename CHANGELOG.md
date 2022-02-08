@@ -2,6 +2,10 @@
 ## 3.0.0 - Unreleased
 - Added support for Gatsby 4.
 
+## Unreleased
+- Added `fetchOptions` option to allow passing in additional options for node-fetch
+- Added `retryOptions` to allow for retries if a request to the CraftCMS API fails, to make sourcing more failure-resistant (e.g. in case of temporary network failure, server timeouts, etc...)
+
 ## 2.0.5 - 2021-12-01
 - Gatsby Helper 1.1.0 or later is now required.
 - Fixed an incompatibility with Craft’s `gqlTypePrefix` config setting. ([#58](https://github.com/craftcms/gatsby-source-craft/issues/58))

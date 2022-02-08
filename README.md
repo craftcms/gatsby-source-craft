@@ -143,7 +143,7 @@ If you’re a learn-by-reading type that’s new to Craft CMS, you may first wan
 ### Configuration Options
 
 | Option            | Default                          | Description |
-| ----------------- | -------------------------------- | ----------- |
+| ----------------- |----------------------------------| ----------- |
 | `concurrency`     | `10`                             | Number of concurrent connections to use querying Craft.
 | `craftGqlUrl`     | `null`                           | Craft GraphQL API endpoint URL. Used, if not defined by an environment variable.
 | `craftGqlToken`   | `null`                           | Craft GraphQL API access token. Used, if not defined by an environment variable.
@@ -153,6 +153,8 @@ If you’re a learn-by-reading type that’s new to Craft CMS, you may first wan
 | `looseInterfaces` | `false`                          | Whether to allow filtering all Craft types by all available interfaces. (See [Enabling Loose Interfaces](#enabling-loose-interfaces).)
 | `sourcingParams`  | `{}`                             | Parameters to be included by type when sourcing content. (See [Using Sourcing Parameters](#using-sourcing-parameters))
 | `enabledSites`    | `null`                           | Defaults to primary site, but may be set to an array of site handles. (See [Sourcing Multiple Sites](#sourcing-multiple-sites).)
+| `fetchOptions`    | `null`                           | Options passed to [`node-fetch`](https://github.com/node-fetch/node-fetch/tree/v2.6.1#options) when executing a request to the API.)
+| `retryOptions`    | `{ retries: 1 }`                 | Options passed to [`p-retry`](https://github.com/sindresorhus/p-retry/tree/v4.6.1#options) on API requests. Allows for automatic retries if a request fails (e.g. due to temporary network failure, server timeout, etc...).)
 
 ### Fetching Craft Content
 

@@ -1,12 +1,15 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const gatsby_source_filesystem_1 = require("gatsby-source-filesystem");
+const p_retry_1 = __importDefault(require("p-retry"));
 const fs = require("fs-extra");
 const fetch = require("node-fetch");
 const path = require("path");
 const { print } = require("gatsby/graphql");
 const { sourceAllNodes, sourceNodeChanges, createSchemaCustomization, generateDefaultFragments, compileNodeQueries, buildNodeDefinitions, wrapQueryExecutorWithQueue, loadSchema, } = require("gatsby-graphql-source-toolkit");
-const { isInterfaceType, isListType } = require("graphql");
 const loadedPluginOptions = {
     craftGqlToken: process.env.CRAFTGQL_TOKEN + "",
     craftGqlUrl: process.env.CRAFTGQL_URL + "",
@@ -17,6 +20,8 @@ const loadedPluginOptions = {
     looseInterfaces: false,
     sourcingParams: {},
     enabledSites: null,
+    verbose: false,
+    retryOptions: { retries: 1 },
 };
 const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
 let schema;
@@ -34,7 +39,6 @@ let gatsbyHelperVersion = '';
 let craftGqlTypePrefix = '';
 let craftVersion = '';
 let craftElementIdField = 'sourceId';
-let craftRemoveSourceFields = false;
 /**
  * Fetch the schema
  */
@@ -280,23 +284,20 @@ async function writeCompiledQueries(nodeDocs) {
  * @param operation
  */
 async function execute(operation) {
+    var _a, _b;
     let { operationName, query, variables = {}, additionalHeaders = {} } = operation;
-    const headers = Object.assign({ "Content-Type": "application/json", Authorization: `Bearer ${loadedPluginOptions.craftGqlToken}` }, additionalHeaders);
+    const headers = Object.assign(Object.assign(Object.assign({}, ((_b = (_a = loadedPluginOptions.fetchOptions) === null || _a === void 0 ? void 0 : _a.headers) !== null && _b !== void 0 ? _b : {})), { "Content-Type": "application/json", Authorization: `Bearer ${loadedPluginOptions.craftGqlToken}` }), additionalHeaders);
     // Set the token, if it exists
     if (previewToken) {
-        headers['X-Craft-Token'] = previewToken;
+        headers["X-Craft-Token"] = previewToken;
     }
-    const res = await fetch(loadedPluginOptions.craftGqlUrl, {
-        method: "POST",
-        body: JSON.stringify({ query, variables, operationName }),
-        headers
-    });
+    const res = await p_retry_1.default(() => fetch(loadedPluginOptions.craftGqlUrl, Object.assign(Object.assign({}, loadedPluginOptions.fetchOptions), { method: "POST", body: JSON.stringify({ query, variables, operationName }), headers })), loadedPluginOptions.retryOptions);
     // Aaaand remove the token for subsequent requests
     previewToken = null;
     return await res.json();
 }
 async function initializePlugin(pluginOptions, gatsbyApi) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
     // Initialize the plugin options
     loadedPluginOptions.craftGqlUrl = (_a = pluginOptions.craftGqlUrl) !== null && _a !== void 0 ? _a : loadedPluginOptions.craftGqlUrl;
     loadedPluginOptions.craftGqlToken = (_b = pluginOptions.craftGqlToken) !== null && _b !== void 0 ? _b : loadedPluginOptions.craftGqlToken;
@@ -307,6 +308,9 @@ async function initializePlugin(pluginOptions, gatsbyApi) {
     loadedPluginOptions.looseInterfaces = (_g = pluginOptions.looseInterfaces) !== null && _g !== void 0 ? _g : loadedPluginOptions.looseInterfaces;
     loadedPluginOptions.sourcingParams = (_h = pluginOptions.sourcingParams) !== null && _h !== void 0 ? _h : loadedPluginOptions.sourcingParams;
     loadedPluginOptions.enabledSites = (_j = pluginOptions.enabledSites) !== null && _j !== void 0 ? _j : loadedPluginOptions.enabledSites;
+    loadedPluginOptions.verbose = (_k = pluginOptions.verbose) !== null && _k !== void 0 ? _k : loadedPluginOptions.verbose;
+    loadedPluginOptions.fetchOptions = (_l = pluginOptions.fetchOptions) !== null && _l !== void 0 ? _l : loadedPluginOptions.fetchOptions;
+    loadedPluginOptions.retryOptions = (_m = pluginOptions.retryOptions) !== null && _m !== void 0 ? _m : loadedPluginOptions.retryOptions;
     // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir);
     await fs.ensureDir(loadedPluginOptions.fragmentsDir);
@@ -314,7 +318,7 @@ async function initializePlugin(pluginOptions, gatsbyApi) {
     const reporter = gatsbyApi.reporter;
     reporter.info("Querying for Craft state.");
     const schema = await getSchema();
-    const queries = (_k = schema.getQueryType()) === null || _k === void 0 ? void 0 : _k.getFields();
+    const queries = (_o = schema.getQueryType()) === null || _o === void 0 ? void 0 : _o.getFields();
     if (!queries) {
         reporter.info("Unable to fetch Craft schema.");
         return;
@@ -453,7 +457,7 @@ exports.createResolvers = async ({ createResolvers, intermediateSchema, actions,
         const possibleTypes = intermediateSchema.getPossibleTypes(iface);
         const resolvers = {};
         for (const assetType of possibleTypes) {
-            resolvers[assetType] = {
+            resolvers[assetType.name] = {
                 localFile: {
                     type: `File`,
                     async resolve(source) {
@@ -577,7 +581,7 @@ async function getSourcingConfig(gatsbyApi) {
         gatsbyNodeDefs: buildNodeDefinitions({ gatsbyNodeTypes, documents }),
         gatsbyTypePrefix: loadedPluginOptions.typePrefix,
         execute: wrapQueryExecutorWithQueue(execute, { concurrency: loadedPluginOptions.concurrency }),
-        verbose: true,
+        verbose: loadedPluginOptions.verbose,
     });
 }
 async function ensureFragmentsExist(reporter) {

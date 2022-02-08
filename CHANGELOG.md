@@ -1,8 +1,8 @@
 # Release Notes
 
-## Unreleased
-- Added `fetchOptions` option to allow passing in additional options for node-fetch
-- Added `retryOptions` to allow for retries if a request to the CraftCMS API fails, to make sourcing more failure-resistant (e.g. in case of temporary network failure, server timeouts, etc...)
+## 2.0.6 - 2022-02-08
+- Added the `fetchOptions` option, for customizing the options passed to node-fetch. ([#71](https://github.com/craftcms/gatsby-source-craft/pull/71))
+- Added the `retryOptions` option, for customizing the options passed to p-retry in the event of an API request failure.  ([#71](https://github.com/craftcms/gatsby-source-craft/pull/71))
 
 ## 2.0.5 - 2021-12-01
 - Gatsby Helper 1.1.0 or later is now required.

@@ -1,6 +1,6 @@
 # Release Notes
 
-## 2.0.6 - 2022-02-05
+## Unreleased
 - Added `fetchOptions` option to allow passing in additional options for node-fetch
 - Added `retryOptions` to allow for retries if a request to the CraftCMS API fails, to make sourcing more failure-resistant (e.g. in case of temporary network failure, server timeouts, etc...)
 

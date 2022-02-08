@@ -1,12 +1,15 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const gatsby_source_filesystem_1 = require("gatsby-source-filesystem");
+const p_retry_1 = __importDefault(require("p-retry"));
 const fs = require("fs-extra");
 const fetch = require("node-fetch");
 const path = require("path");
 const { print } = require("gatsby/graphql");
 const { sourceAllNodes, sourceNodeChanges, createSchemaCustomization, generateDefaultFragments, compileNodeQueries, buildNodeDefinitions, wrapQueryExecutorWithQueue, loadSchema, } = require("gatsby-graphql-source-toolkit");
-const { isInterfaceType, isListType } = require("graphql");
 const loadedPluginOptions = {
     craftGqlToken: process.env.CRAFTGQL_TOKEN + "",
     craftGqlUrl: process.env.CRAFTGQL_URL + "",
@@ -16,12 +19,11 @@ const loadedPluginOptions = {
     typePrefix: "Craft_",
     looseInterfaces: false,
     sourcingParams: {},
-    enabledSites: null
+    enabledSites: null,
+    verbose: false,
+    retryOptions: { retries: 1 },
 };
 const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
-const mandatoryFragments = {
-    ensureRemoteId: 'fragment RequiredEntryFields on EntryInterface { id }'
-};
 let schema;
 let gatsbyNodeTypes;
 let sourcingConfig;
@@ -31,6 +33,12 @@ let craftTypesByInterface = {};
 let craftFieldsByInterface = {};
 let craftPrimarySiteId = '';
 let craftEnabledSites = '';
+let remoteConfigVersion = '';
+let lastUpdateTime = '';
+let gatsbyHelperVersion = '';
+let craftGqlTypePrefix = '';
+let craftVersion = '';
+let craftElementIdField = 'sourceId';
 /**
  * Fetch the schema
  */
@@ -43,23 +51,27 @@ async function getSchema() {
 /**
  * Return a list of all possible Gatsby node types
  */
-async function getGatsbyNodeTypes() {
-    var _a;
+async function getGatsbyNodeTypes(reporter) {
+    if (!craftVersion.length) {
+        reporter.error('Unable to source nodes!');
+        return ([]);
+    }
     if (gatsbyNodeTypes) {
         return gatsbyNodeTypes;
     }
     const schema = await getSchema();
-    const queries = (_a = schema.getQueryType()) === null || _a === void 0 ? void 0 : _a.getFields();
-    if (!queries) {
-        return ([]);
-    }
-    // Check if Craft endpoint has Gatsby plugin installed and enabled.
-    if (!queries.sourceNodeInformation) {
-        return ([]);
-    }
+    gatsbyNodeTypes = [];
     const queryResponse = await execute({
         operationName: 'sourceNodeData',
-        query: 'query sourceNodeData { sourceNodeInformation { node list filterArgument filterTypeExpression targetInterface } primarySiteId }',
+        query: `query sourceNodeData { 
+            sourceNodeInformation { 
+                node 
+                list 
+                filterArgument 
+                filterTypeExpression 
+                targetInterface 
+            } 
+        }`,
         variables: {},
         additionalHeaders: {
             "X-Craft-Gql-Cache": "no-cache"
@@ -68,7 +80,6 @@ async function getGatsbyNodeTypes() {
     if (!(queryResponse.data && queryResponse.data.sourceNodeInformation)) {
         return ([]);
     }
-    craftPrimarySiteId = queryResponse.data.primarySiteId;
     const sourceNodeInformation = queryResponse.data.sourceNodeInformation;
     const queryMap = {};
     // Loop through returned data and build the query map Craft has provided for us.
@@ -104,7 +115,7 @@ async function getGatsbyNodeTypes() {
             }
         }
         const canBeDraft = (input) => {
-            return typeof input === 'object' && input !== null && '_fields' in input && 'sourceId' in input.getFields();
+            return typeof input === 'object' && input !== null && '_fields' in input && craftElementIdField in input.getFields();
         };
         return schema.getPossibleTypes(iface).map(type => {
             if (craftTypesByInterface[ifaceName]) {
@@ -134,7 +145,7 @@ async function getGatsbyNodeTypes() {
      */
     const fragmentHelper = (typeName, canBeDraft) => {
         const fragmentName = '_Craft' + typeName + 'ID_';
-        const idProperty = canBeDraft ? 'sourceId' : 'id';
+        const idProperty = canBeDraft ? craftElementIdField : 'id';
         return {
             fragmentName: fragmentName,
             fragment: `
@@ -146,7 +157,6 @@ async function getGatsbyNodeTypes() {
             `
         };
     };
-    gatsbyNodeTypes = [];
     if (loadedPluginOptions.enabledSites) {
         if (typeof loadedPluginOptions.enabledSites == "object") {
             craftEnabledSites = `["${loadedPluginOptions.enabledSites.join('", "')}"]`;
@@ -203,10 +213,10 @@ async function getGatsbyNodeTypes() {
 /**
  * Write default fragments to the disk.
  */
-async function writeDefaultFragments() {
+async function writeDefaultFragments(reporter) {
     const defaultFragments = generateDefaultFragments({
         schema: await getSchema(),
-        gatsbyNodeTypes: await getGatsbyNodeTypes(),
+        gatsbyNodeTypes: await getGatsbyNodeTypes(reporter),
     });
     await fs.ensureDir(internalFragmentDir);
     for (const [remoteTypeName, fragment] of defaultFragments) {
@@ -219,6 +229,9 @@ async function writeDefaultFragments() {
 async function addExtraFragments(reporter) {
     const fragmentDir = loadedPluginOptions.fragmentsDir;
     const fragments = await fs.readdir(fragmentDir);
+    const mandatoryFragments = {
+        ensureRemoteId: `fragment RequiredEntryFields on ${craftGqlTypePrefix}EntryInterface { id }`
+    };
     // Add mandatory fragments
     for (let [fragmentName, fragmentBody] of Object.entries(mandatoryFragments)) {
         fragmentName += '.graphql';
@@ -271,23 +284,20 @@ async function writeCompiledQueries(nodeDocs) {
  * @param operation
  */
 async function execute(operation) {
+    var _a, _b;
     let { operationName, query, variables = {}, additionalHeaders = {} } = operation;
-    const headers = Object.assign({ "Content-Type": "application/json", Authorization: `Bearer ${loadedPluginOptions.craftGqlToken}` }, additionalHeaders);
+    const headers = Object.assign(Object.assign(Object.assign({}, ((_b = (_a = loadedPluginOptions.fetchOptions) === null || _a === void 0 ? void 0 : _a.headers) !== null && _b !== void 0 ? _b : {})), { "Content-Type": "application/json", Authorization: `Bearer ${loadedPluginOptions.craftGqlToken}` }), additionalHeaders);
     // Set the token, if it exists
     if (previewToken) {
-        headers['X-Craft-Token'] = previewToken;
+        headers["X-Craft-Token"] = previewToken;
     }
-    const res = await fetch(loadedPluginOptions.craftGqlUrl, {
-        method: "POST",
-        body: JSON.stringify({ query, variables, operationName }),
-        headers
-    });
+    const res = await (0, p_retry_1.default)(() => fetch(loadedPluginOptions.craftGqlUrl, Object.assign(Object.assign({}, loadedPluginOptions.fetchOptions), { method: "POST", body: JSON.stringify({ query, variables, operationName }), headers })), loadedPluginOptions.retryOptions);
     // Aaaand remove the token for subsequent requests
     previewToken = null;
     return await res.json();
 }
 exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
     // Set all the config settings pre-bootstrap
     loadedPluginOptions.craftGqlUrl = (_a = pluginOptions.craftGqlUrl) !== null && _a !== void 0 ? _a : loadedPluginOptions.craftGqlUrl;
     loadedPluginOptions.craftGqlToken = (_b = pluginOptions.craftGqlToken) !== null && _b !== void 0 ? _b : loadedPluginOptions.craftGqlToken;
@@ -298,11 +308,58 @@ exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
     loadedPluginOptions.looseInterfaces = (_g = pluginOptions.looseInterfaces) !== null && _g !== void 0 ? _g : loadedPluginOptions.looseInterfaces;
     loadedPluginOptions.sourcingParams = (_h = pluginOptions.sourcingParams) !== null && _h !== void 0 ? _h : loadedPluginOptions.sourcingParams;
     loadedPluginOptions.enabledSites = (_j = pluginOptions.enabledSites) !== null && _j !== void 0 ? _j : loadedPluginOptions.enabledSites;
+    loadedPluginOptions.verbose = (_k = pluginOptions.verbose) !== null && _k !== void 0 ? _k : loadedPluginOptions.verbose;
+    loadedPluginOptions.fetchOptions = (_l = pluginOptions.fetchOptions) !== null && _l !== void 0 ? _l : loadedPluginOptions.fetchOptions;
+    loadedPluginOptions.retryOptions = (_m = pluginOptions.retryOptions) !== null && _m !== void 0 ? _m : loadedPluginOptions.retryOptions;
     // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir);
     await fs.ensureDir(loadedPluginOptions.fragmentsDir);
+    // Fetch the meta data
+    const reporter = gatsbyApi.reporter;
+    reporter.info("Querying for Craft state.");
+    const schema = await getSchema();
+    const queries = (_o = schema.getQueryType()) === null || _o === void 0 ? void 0 : _o.getFields();
+    if (!queries) {
+        reporter.info("Unable to fetch Craft schema.");
+        return;
+    }
+    // Check if Craft endpoint has Gatsby plugin installed and enabled.
+    if (!queries.sourceNodeInformation) {
+        reporter.info("Gatsby Helper not found on target Craft site.");
+        return;
+    }
+    if (!queries.craftVersion) {
+        reporter.info("Gatsby Helper plugin must be at least version 1.1.0 or greater.");
+    }
+    const { data } = await execute({
+        operationName: 'craftState',
+        query: `query craftState { 
+            configVersion 
+            lastUpdateTime 
+            primarySiteId
+            gatsbyHelperVersion
+            gqlTypePrefix 
+            craftVersion
+        }`,
+        variables: {},
+        additionalHeaders: {
+            "X-Craft-Gql-Cache": "no-cache"
+        }
+    });
+    remoteConfigVersion = data.configVersion;
+    lastUpdateTime = data.lastUpdateTime;
+    craftGqlTypePrefix = data.gqlTypePrefix;
+    gatsbyHelperVersion = data.gatsbyHelperVersion;
+    craftPrimarySiteId = data.primarySiteId;
+    craftVersion = data.craftVersion;
+    // Avoid deprecation errors
+    if (craftVersion >= '3.7.0') {
+        console.log('Switch to canonical?');
+        craftElementIdField = 'canonicalId';
+    }
+    reporter.info(`Craft v${craftVersion}, running Helper plugin v${gatsbyHelperVersion}`);
     // Make sure the fragments exist
-    await ensureFragmentsExist(gatsbyApi.reporter);
+    await ensureFragmentsExist(reporter);
 };
 exports.createSchemaCustomization = async (gatsbyApi) => {
     const config = await getSourcingConfig(gatsbyApi);
@@ -331,7 +388,7 @@ exports.createSchemaCustomization = async (gatsbyApi) => {
                 }
             }
             // Convert Craft's DateTime to Gatsby's Date.
-            fieldType = fieldType.replace(/DateTime/, 'JSON');
+            fieldType = fieldType.replace(new RegExp(craftGqlTypePrefix + 'DateTime'), 'JSON');
             if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!\]|$)/)) {
                 return fieldType;
             }
@@ -391,18 +448,18 @@ exports.createSchemaCustomization = async (gatsbyApi) => {
 // Add `localFile` nodes to assets.
 exports.createResolvers = async ({ createResolvers, intermediateSchema, actions, cache, createNodeId, store, reporter }) => {
     const { createNode } = actions;
-    const ifaceName = loadedPluginOptions.typePrefix + 'AssetInterface';
+    const ifaceName = `${loadedPluginOptions.typePrefix + craftGqlTypePrefix}AssetInterface`;
     const iface = intermediateSchema.getType(ifaceName);
     if (iface) {
         const possibleTypes = intermediateSchema.getPossibleTypes(iface);
         const resolvers = {};
         for (const assetType of possibleTypes) {
-            resolvers[assetType] = {
+            resolvers[assetType.name] = {
                 localFile: {
                     type: `File`,
                     async resolve(source) {
                         if (source.url) {
-                            return await gatsby_source_filesystem_1.createRemoteFileNode({
+                            return await (0, gatsby_source_filesystem_1.createRemoteFileNode)({
                                 url: encodeURI(source.url),
                                 store,
                                 cache,
@@ -451,17 +508,6 @@ exports.sourceNodes = async (gatsbyApi) => {
         });
         return;
     }
-    reporter.info("Checking Craft config version.");
-    const { data } = await execute({
-        operationName: 'craftState',
-        query: 'query craftState { configVersion lastUpdateTime }',
-        variables: {},
-        additionalHeaders: {
-            "X-Craft-Gql-Cache": "no-cache"
-        }
-    });
-    const remoteConfigVersion = data.configVersion;
-    const remoteContentUpdateTime = data.lastUpdateTime;
     const localConfigVersion = (await cache.get(`CRAFT_CONFIG_VERSION`)) || '';
     const localContentUpdateTime = (await cache.get(`CRAFT_LAST_CONTENT_UPDATE`)) || '';
     // If either project config changed or we don't have cached content, source it all
@@ -512,14 +558,14 @@ exports.sourceNodes = async (gatsbyApi) => {
         await sourceNodeChanges(config, { nodeEvents });
     }
     await cache.set(`CRAFT_CONFIG_VERSION`, remoteConfigVersion);
-    await cache.set(`CRAFT_LAST_CONTENT_UPDATE`, remoteContentUpdateTime);
+    await cache.set(`CRAFT_LAST_CONTENT_UPDATE`, lastUpdateTime);
 };
 async function getSourcingConfig(gatsbyApi) {
     if (sourcingConfig) {
         return sourcingConfig;
     }
     const schema = await getSchema();
-    const gatsbyNodeTypes = await getGatsbyNodeTypes();
+    const gatsbyNodeTypes = await getGatsbyNodeTypes(gatsbyApi.reporter);
     const documents = await compileNodeQueries({
         schema,
         gatsbyNodeTypes,
@@ -532,13 +578,13 @@ async function getSourcingConfig(gatsbyApi) {
         gatsbyNodeDefs: buildNodeDefinitions({ gatsbyNodeTypes, documents }),
         gatsbyTypePrefix: loadedPluginOptions.typePrefix,
         execute: wrapQueryExecutorWithQueue(execute, { concurrency: loadedPluginOptions.concurrency }),
-        verbose: true,
+        verbose: loadedPluginOptions.verbose,
     });
 }
 async function ensureFragmentsExist(reporter) {
     reporter.info("Clearing previous fragments.");
     await fs.remove(internalFragmentDir, { recursive: true });
     reporter.info("Writing default fragments.");
-    await writeDefaultFragments();
+    await writeDefaultFragments(reporter);
     await addExtraFragments(reporter);
 }

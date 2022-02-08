@@ -1,14 +1,14 @@
 import {GraphQLSchema} from "graphql";
 import {
-    GraphQLAbstractType,
     GraphQLField,
     GraphQLInterfaceType,
     GraphQLObjectType,
-    GraphQLType
 } from "graphql/type/definition";
 import {IGatsbyNodeConfig, IGatsbyNodeDefinition, ISourcingConfig} from "gatsby-graphql-source-toolkit/dist/types";
-import {NodePluginArgs, Reporter} from "gatsby";
+import { CreateResolversArgs,  NodePluginArgs, Reporter } from 'gatsby';
 import {createRemoteFileNode} from "gatsby-source-filesystem";
+import { RequestInit } from "node-fetch";
+import pRetry, { Options as RetryOptions } from "p-retry";
 
 type SourcePluginOptions = {
     craftGqlUrl: string,
@@ -20,6 +20,11 @@ type SourcePluginOptions = {
     looseInterfaces: boolean,
     sourcingParams: { [key: string]: { [key:string] : string}},
     enabledSites: string|[string]|null,
+    verbose: boolean;
+    fetchOptions?: Omit<RequestInit, "body" | "method" | "headers"> & {
+      headers?: { [key: string]: string };
+    };
+    retryOptions: RetryOptions;
 }
 
 type ModifiedNodeInfo = {
@@ -50,7 +55,6 @@ const {
     wrapQueryExecutorWithQueue,
     loadSchema,
 } = require("gatsby-graphql-source-toolkit")
-const {isInterfaceType, isListType} = require("graphql")
 
 const loadedPluginOptions: SourcePluginOptions = {
     craftGqlToken: process.env.CRAFTGQL_TOKEN + "",
@@ -62,6 +66,8 @@ const loadedPluginOptions: SourcePluginOptions = {
     looseInterfaces: false,
     sourcingParams: {},
     enabledSites: null,
+    verbose: false,
+    retryOptions: { retries: 1 },
 };
 
 const internalFragmentDir = __dirname + "/.cache/internal-craft-fragments";
@@ -84,7 +90,6 @@ let craftGqlTypePrefix = '';
 let craftVersion = '';
 
 let craftElementIdField = 'sourceId';
-let craftRemoveSourceFields = false;
 
 /**
  * Fetch the schema
@@ -379,21 +384,27 @@ async function execute(operation: { operationName: string, query: string, variab
     let {operationName, query, variables = {}, additionalHeaders = {} } = operation;
 
     const headers: { [key: string]: string } = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${loadedPluginOptions.craftGqlToken}`,
-        ...additionalHeaders
+      ...(loadedPluginOptions.fetchOptions?.headers ?? {}),
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${loadedPluginOptions.craftGqlToken}`,
+      ...additionalHeaders,
     };
 
     // Set the token, if it exists
     if (previewToken) {
-        headers['X-Craft-Token'] = previewToken;
+      headers["X-Craft-Token"] = previewToken;
     }
 
-    const res = await fetch(loadedPluginOptions.craftGqlUrl, {
-        method: "POST",
-        body: JSON.stringify({query, variables, operationName}),
-        headers
-    });
+    const res = await pRetry(
+      () =>
+        fetch(loadedPluginOptions.craftGqlUrl, {
+          ...loadedPluginOptions.fetchOptions,
+          method: "POST",
+          body: JSON.stringify({ query, variables, operationName }),
+          headers,
+        }),
+      loadedPluginOptions.retryOptions
+    );
 
     // Aaaand remove the token for subsequent requests
     previewToken = null;
@@ -412,6 +423,9 @@ exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: Source
     loadedPluginOptions.looseInterfaces = pluginOptions.looseInterfaces ?? loadedPluginOptions.looseInterfaces;
     loadedPluginOptions.sourcingParams = pluginOptions.sourcingParams ?? loadedPluginOptions.sourcingParams;
     loadedPluginOptions.enabledSites = pluginOptions.enabledSites ?? loadedPluginOptions.enabledSites;
+    loadedPluginOptions.verbose = pluginOptions.verbose ?? loadedPluginOptions.verbose;
+    loadedPluginOptions.fetchOptions = pluginOptions.fetchOptions ?? loadedPluginOptions.fetchOptions;
+    loadedPluginOptions.retryOptions = pluginOptions.retryOptions ?? loadedPluginOptions.retryOptions;
 
     // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir)
@@ -575,7 +589,7 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
 
 // @ts-ignore
 // Add `localFile` nodes to assets.
-exports.createResolvers = async ({ createResolvers, intermediateSchema,  actions, cache, createNodeId, store, reporter }) => {
+exports.createResolvers = async ({ createResolvers, intermediateSchema,  actions, cache, createNodeId, store, reporter }: CreateResolversArgs & {intermediateSchema: GraphQLSchema}) => {
     const { createNode } = actions;
     const ifaceName = `${loadedPluginOptions.typePrefix + craftGqlTypePrefix}AssetInterface`;
     const iface = intermediateSchema.getType(ifaceName) as GraphQLInterfaceType;
@@ -585,7 +599,7 @@ exports.createResolvers = async ({ createResolvers, intermediateSchema,  actions
         const resolvers: {[key: string] : any}  = {};
 
         for (const assetType of possibleTypes) {
-            resolvers[assetType] = {
+            resolvers[assetType.name] = {
                 localFile: {
                     type: `File`,
                     async resolve(source: any) {
@@ -726,7 +740,7 @@ async function getSourcingConfig(gatsbyApi: NodePluginArgs) {
         gatsbyNodeDefs: buildNodeDefinitions({gatsbyNodeTypes, documents}),
         gatsbyTypePrefix: loadedPluginOptions.typePrefix,
         execute: wrapQueryExecutorWithQueue(execute, {concurrency: loadedPluginOptions.concurrency}),
-        verbose: true,
+        verbose: loadedPluginOptions.verbose,
     })
 }
 

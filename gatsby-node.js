@@ -291,7 +291,7 @@ async function execute(operation) {
     if (previewToken) {
         headers["X-Craft-Token"] = previewToken;
     }
-    const res = await (0, p_retry_1.default)(() => fetch(loadedPluginOptions.craftGqlUrl, Object.assign(Object.assign({}, loadedPluginOptions.fetchOptions), { method: "POST", body: JSON.stringify({ query, variables, operationName }), headers })), loadedPluginOptions.retryOptions);
+    const res = await p_retry_1.default(() => fetch(loadedPluginOptions.craftGqlUrl, Object.assign(Object.assign({}, loadedPluginOptions.fetchOptions), { method: "POST", body: JSON.stringify({ query, variables, operationName }), headers })), loadedPluginOptions.retryOptions);
     // Aaaand remove the token for subsequent requests
     previewToken = null;
     return await res.json();
@@ -389,7 +389,7 @@ exports.createSchemaCustomization = async (gatsbyApi) => {
             }
             // Convert Craft's DateTime to Gatsby's Date.
             fieldType = fieldType.replace(new RegExp(craftGqlTypePrefix + 'DateTime'), 'JSON');
-            if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!\]|$)/)) {
+            if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!|$)/)) {
                 return fieldType;
             }
             return fieldType.replace(/^([^a-z]+)?([a-z_]+)([^a-z]+)?$/i, '$1' + loadedPluginOptions.typePrefix + '$2$3');
@@ -459,7 +459,7 @@ exports.createResolvers = async ({ createResolvers, intermediateSchema, actions,
                     type: `File`,
                     async resolve(source) {
                         if (source.url) {
-                            return await (0, gatsby_source_filesystem_1.createRemoteFileNode)({
+                            return await gatsby_source_filesystem_1.createRemoteFileNode({
                                 url: encodeURI(source.url),
                                 store,
                                 cache,

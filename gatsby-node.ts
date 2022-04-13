@@ -479,7 +479,6 @@ exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: Source
 
     // Avoid deprecation errors
     if (craftVersion >= '3.7.0') {
-        console.log('Switch to canonical?');
         craftElementIdField = 'canonicalId';
     }
 

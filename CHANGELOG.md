@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 2.0.7 - 2022-04-13
 - Fixed a bug that could prevent a site build from completing in some cases.
 
 ## 2.0.6 - 2022-02-08

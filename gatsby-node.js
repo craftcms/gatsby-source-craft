@@ -354,7 +354,6 @@ exports.onPreBootstrap = async (gatsbyApi, pluginOptions) => {
     craftVersion = data.craftVersion;
     // Avoid deprecation errors
     if (craftVersion >= '3.7.0') {
-        console.log('Switch to canonical?');
         craftElementIdField = 'canonicalId';
     }
     reporter.info(`Craft v${craftVersion}, running Helper plugin v${gatsbyHelperVersion}`);

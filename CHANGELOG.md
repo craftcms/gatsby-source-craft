@@ -1,6 +1,6 @@
 # Release Notes
 
-## 3.0.0 - Unreleased
+## 3.0.0 - 2022-04-14
 - Added support for Gatsby 4.
 
 ## 2.0.7 - 2022-04-13

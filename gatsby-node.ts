@@ -480,7 +480,6 @@ async function initializePlugin(pluginOptions: SourcePluginOptions, gatsbyApi: N
 
     // Avoid deprecation errors
     if (craftVersion >= '3.7.0') {
-        console.log('Switch to canonical?');
         craftElementIdField = 'canonicalId';
     }
 
@@ -530,7 +529,7 @@ exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {
             // Convert Craft's DateTime to Gatsby's Date.
             fieldType = fieldType.replace(new RegExp(craftGqlTypePrefix + 'DateTime'), 'JSON');
 
-            if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!\]|$)/)) {
+            if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!|$)/)) {
                 return fieldType;
             }
 

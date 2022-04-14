@@ -392,7 +392,7 @@ exports.createSchemaCustomization = async (gatsbyApi) => {
             }
             // Convert Craft's DateTime to Gatsby's Date.
             fieldType = fieldType.replace(new RegExp(craftGqlTypePrefix + 'DateTime'), 'JSON');
-            if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!\]|$)/)) {
+            if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!|$)/)) {
                 return fieldType;
             }
             return fieldType.replace(/^([^a-z]+)?([a-z_]+)([^a-z]+)?$/i, '$1' + loadedPluginOptions.typePrefix + '$2$3');

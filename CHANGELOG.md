@@ -3,6 +3,9 @@
 ## 3.0.0 - Unreleased
 - Added support for Gatsby 4.
 
+## 2.0.7 - 2022-04-13
+- Fixed a bug that could prevent a site build from completing in some cases.
+
 ## 2.0.6 - 2022-02-08
 - Added the `fetchOptions` option, for customizing the options passed to node-fetch. ([#71](https://github.com/craftcms/gatsby-source-craft/pull/71))
 - Added the `retryOptions` option, for customizing the options passed to p-retry in the event of an API request failure.  ([#71](https://github.com/craftcms/gatsby-source-craft/pull/71))

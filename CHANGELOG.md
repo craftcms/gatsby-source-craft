@@ -1,5 +1,8 @@
 # Release Notes
 
+## 3.0.0 - 2022-04-14
+- Added support for Gatsby 4.
+
 ## 2.0.7 - 2022-04-13
 - Fixed a bug that could prevent a site build from completing in some cases.
 

@@ -7,6 +7,8 @@ This Gatsby source plugin provides an integration with [Craft CMS](https://craft
 
 It requires Craft CMS 3.5.16 or later, and for the corresponding [Gatsby Helper](https://github.com/craftcms/gatsby-helper) plugin 1.1.0 or later to be installed on the Craft site.
 
+Currently, this plugin still downloads the queried Asset files locally using an [older and more expensive approach](https://v4.gatsbyjs.com/docs/reference/release-notes/migrating-source-plugin-from-v3-to-v4/#2-data-mutations-need-to-happen-during-sourcenodes-or-oncreatenode) that will be improved in a future release.
+
 ---
 
 ## Table of Contents

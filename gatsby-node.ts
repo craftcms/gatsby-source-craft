@@ -412,8 +412,9 @@ async function execute(operation: { operationName: string, query: string, variab
     return await res.json()
 }
 
-exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
-    // Set all the config settings pre-bootstrap
+async function initializePlugin(pluginOptions: SourcePluginOptions, gatsbyApi: NodePluginArgs)
+{
+    // Initialize the plugin options
     loadedPluginOptions.craftGqlUrl = pluginOptions.craftGqlUrl ?? loadedPluginOptions.craftGqlUrl;
     loadedPluginOptions.craftGqlToken = pluginOptions.craftGqlToken ?? loadedPluginOptions.craftGqlToken;
     loadedPluginOptions.concurrency = pluginOptions.concurrency ?? loadedPluginOptions.concurrency;
@@ -485,6 +486,10 @@ exports.onPreBootstrap = async (gatsbyApi: NodePluginArgs, pluginOptions: Source
     reporter.info(`Craft v${craftVersion}, running Helper plugin v${gatsbyHelperVersion}`);
     // Make sure the fragments exist
     await ensureFragmentsExist(reporter)
+}
+
+exports.onPluginInit = async (gatsbyApi: NodePluginArgs, pluginOptions: SourcePluginOptions) => {
+    await initializePlugin(pluginOptions, gatsbyApi);
 }
 
 exports.createSchemaCustomization = async (gatsbyApi: NodePluginArgs) => {

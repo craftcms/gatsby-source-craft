@@ -29,7 +29,7 @@
     "fs-extra": "^9.0.1",
     "gatsby-graphql-source-toolkit": "^2.0.0",
     "gatsby-source-filesystem": "^4.1.0",
-    "node-fetch": "^2.6.1",
+    "node-fetch": "^2.6.7",
     "p-retry": "^4.6.1"
   },
   "devDependencies": {

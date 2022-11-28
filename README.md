@@ -55,7 +55,7 @@ For configuring Craft’s GraphQL endpoint, schema, and tokens, see Craft’s [G
 
 Once your endpoint and schema are established, be sure to enable **Allow discovery of sourcing data for Gatsby** in the **Gatsby** section of the schema you’d like to query with the [gatsby-source-craft](https://github.com/craftcms/gatsby-source-craft) Gatsby plugin.
 
-You may optionally designate a **Preview webhook target URL** in the plugin settings.
+You may optionally designate a **n webhook target URL** in the plugin settings.
 
 ### Install and Configure the Gatsby Source Plugin
 
@@ -396,7 +396,7 @@ Configure Craft CMS to use Gatsby Cloud for live preview:
 1. Add a new live preview target that uses your Gatsby Cloud CMS Preview URL. (For example: `https://preview-foo1234.gtsb.io/blog/{slug}`. Leave **Refresh** un-checked.)
 2. Navigate to **Settings** → **Gatsby Helper** and add the webhook URL from step #5 above to the **Preview webhook target URL** field. (This will look like `https://webhook.gatsbyjs.com/hooks/data_source/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`, without the `__refresh` part you would add for local development.)
 
-You should now be able to select your Gatsby preview target in live preview and see content updates automatically applied in the preview pane.
+Updating content should now trigger a build in Gatsby. When the build is complete you can refresh the preview to see your changes. 
 
 > 💡 You can set the **Preview webhook target URL** field to an [environment variable](https://craftcms.com/docs/3.x/config/#environmental-configuration) like `$GATSBY_PREVIEW_WEBHOOK` to manage it more easily across environments.
 

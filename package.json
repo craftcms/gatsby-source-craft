@@ -36,7 +36,7 @@
     "@types/fs-extra": "^9.0.13",
     "@types/node-fetch": "^2.5.12",
     "dotenv": "^8.2.0",
-    "gatsby": "^4.0.0",
+    "gatsby": "^5.4.0",
     "graphql": "^15.0.0",
     "prettier": "2.0.5",
     "typescript": "^4.5.5"

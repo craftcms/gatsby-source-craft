@@ -31,14 +31,14 @@ let previewToken;
 let craftInterfaces = [];
 let craftTypesByInterface = {};
 let craftFieldsByInterface = {};
-let craftPrimarySiteId = '';
-let craftEnabledSites = '';
-let remoteConfigVersion = '';
-let lastUpdateTime = '';
-let gatsbyHelperVersion = '';
-let craftGqlTypePrefix = '';
-let craftVersion = '';
-let craftElementIdField = 'sourceId';
+let craftPrimarySiteId = "";
+let craftEnabledSites = "";
+let remoteConfigVersion = "";
+let lastUpdateTime = "";
+let gatsbyHelperVersion = "";
+let craftGqlTypePrefix = "";
+let craftVersion = "";
+let craftElementIdField = "sourceId";
 /**
  * Fetch the schema
  */
@@ -53,8 +53,8 @@ async function getSchema() {
  */
 async function getGatsbyNodeTypes(reporter) {
     if (!craftVersion.length) {
-        reporter.error('Unable to source nodes!');
-        return ([]);
+        reporter.error("Unable to source nodes!");
+        return [];
     }
     if (gatsbyNodeTypes) {
         return gatsbyNodeTypes;
@@ -62,7 +62,7 @@ async function getGatsbyNodeTypes(reporter) {
     const schema = await getSchema();
     gatsbyNodeTypes = [];
     const queryResponse = await execute({
-        operationName: 'sourceNodeData',
+        operationName: "sourceNodeData",
         query: `query sourceNodeData { 
             sourceNodeInformation { 
                 node 
@@ -74,11 +74,11 @@ async function getGatsbyNodeTypes(reporter) {
         }`,
         variables: {},
         additionalHeaders: {
-            "X-Craft-Gql-Cache": "no-cache"
-        }
+            "X-Craft-Gql-Cache": "no-cache",
+        },
     });
     if (!(queryResponse.data && queryResponse.data.sourceNodeInformation)) {
-        return ([]);
+        return [];
     }
     const sourceNodeInformation = queryResponse.data.sourceNodeInformation;
     const queryMap = {};
@@ -86,13 +86,15 @@ async function getGatsbyNodeTypes(reporter) {
     for (let nodeInformation of sourceNodeInformation) {
         queryMap[nodeInformation.targetInterface] = {
             list: nodeInformation.list,
-            node: nodeInformation.node
+            node: nodeInformation.node,
         };
         if (nodeInformation.filterArgument) {
-            queryMap[nodeInformation.targetInterface].filterArgument = nodeInformation.filterArgument;
+            queryMap[nodeInformation.targetInterface].filterArgument =
+                nodeInformation.filterArgument;
         }
         if (nodeInformation.filterTypeExpression) {
-            queryMap[nodeInformation.targetInterface].filterTypeExpression = nodeInformation.filterTypeExpression;
+            queryMap[nodeInformation.targetInterface].filterTypeExpression =
+                nodeInformation.filterTypeExpression;
         }
         craftInterfaces.push(nodeInformation.targetInterface);
     }
@@ -115,27 +117,31 @@ async function getGatsbyNodeTypes(reporter) {
             }
         }
         const canBeDraft = (input) => {
-            return typeof input === 'object' && input !== null && '_fields' in input && craftElementIdField in input.getFields();
+            return (typeof input === "object" &&
+                input !== null &&
+                "_fields" in input &&
+                // @ts-ignore
+                craftElementIdField in input.getFields());
         };
-        return schema.getPossibleTypes(iface).map(type => {
+        return schema.getPossibleTypes(iface).map((type) => {
             if (craftTypesByInterface[ifaceName]) {
                 craftTypesByInterface[ifaceName].push(type);
             }
             else {
                 craftTypesByInterface[ifaceName] = [type];
             }
-            return ({
+            return {
                 remoteTypeName: type.name,
                 queries: queryListBuilder(type.name, canBeDraft(type)),
-                nodeQueryVariables: id => {
+                nodeQueryVariables: (id) => {
                     var _a;
                     const idValue = (_a = id.sourceId) !== null && _a !== void 0 ? _a : id.id;
                     return {
                         id: idValue,
-                        siteId: id.siteId
+                        siteId: id.siteId,
                     };
-                }
-            });
+                },
+            };
         });
     };
     // prettier-ignore
@@ -172,7 +178,7 @@ async function getGatsbyNodeTypes(reporter) {
     for (let [interfaceName, sourceNodeInformation] of Object.entries(queryMap)) {
         // extract all the different types for the interfaces
         gatsbyNodeTypes.push(...extractNodesFromInterface(interfaceName, (typeName, canBeDraft) => {
-            let queries = '';
+            let queries = "";
             let fragmentInfo = fragmentHelper(typeName, canBeDraft);
             queries = fragmentInfo.fragment;
             // and define queries for the concrete type
@@ -180,12 +186,13 @@ async function getGatsbyNodeTypes(reporter) {
                 queries += `query NODE_${typeName} { ${sourceNodeInformation.node}(id: $id siteId: $siteId status: null) { ... ${fragmentInfo.fragmentName}  } }
                 `;
             }
-            let typeFilter = '';
+            let typeFilter = "";
             if (sourceNodeInformation.filterArgument) {
                 let regexp = new RegExp(sourceNodeInformation.filterTypeExpression);
                 const matches = typeName.match(regexp);
                 if (matches && matches[1]) {
-                    typeFilter = sourceNodeInformation.filterArgument + ': "' + matches[1] + '"';
+                    typeFilter =
+                        sourceNodeInformation.filterArgument + ': "' + matches[1] + '"';
                 }
             }
             // Add sourcing parameters defined by user to the sourcing queries
@@ -199,16 +206,32 @@ async function getGatsbyNodeTypes(reporter) {
                 configuredParameters = Object.assign(configuredParameters, loadedPluginOptions.sourcingParams[typeName]);
             }
             // Convert all of that to a string
-            let configuredParameterString = '';
+            let configuredParameterString = "";
             for (const [key, value] of Object.entries(configuredParameters)) {
                 configuredParameterString += `${key}: ${value} `;
             }
-            queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset site: ${craftEnabledSites} ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
+            if (sourceNodeInformation.node == "entry") {
+                // In order to find sectionHandles, we need to use a different regular expression.
+                // If Craft upgrades to this regular expression, it will be able to do both TypeHandles and SectionHandles.
+                let sectionHandleRegex = new RegExp("^(.+)_(.*)_Entry$");
+                let sectionHandleMatch = sectionHandleRegex.exec(typeName);
+                if (sectionHandleMatch && sectionHandleMatch[1]) {
+                    let sectionHandleFilter = `section: "${sectionHandleMatch[1]}"`;
+                    queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${sectionHandleFilter} ${typeFilter} limit: $limit, offset: $offset site: ${craftEnabledSites} ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
             `;
+                }
+                else {
+                    reporter.panic(`Entry ${typeName} does not have a sectionHandle. Aborting Process.`);
+                }
+            }
+            else {
+                queries += `query LIST_${typeName} { ${sourceNodeInformation.list}(${typeFilter} limit: $limit, offset: $offset site: ${craftEnabledSites} ${configuredParameterString}) { ... ${fragmentInfo.fragmentName} } }
+            `;
+            }
             return queries;
         }));
     }
-    return (gatsbyNodeTypes);
+    return gatsbyNodeTypes;
 }
 /**
  * Write default fragments to the disk.
@@ -230,11 +253,11 @@ async function addExtraFragments(reporter) {
     const fragmentDir = loadedPluginOptions.fragmentsDir;
     const fragments = await fs.readdir(fragmentDir);
     const mandatoryFragments = {
-        ensureRemoteId: `fragment RequiredEntryFields on ${craftGqlTypePrefix}EntryInterface { id }`
+        ensureRemoteId: `fragment RequiredEntryFields on ${craftGqlTypePrefix}EntryInterface { id }`,
     };
     // Add mandatory fragments
     for (let [fragmentName, fragmentBody] of Object.entries(mandatoryFragments)) {
-        fragmentName += '.graphql';
+        fragmentName += ".graphql";
         const filePath = path.join(internalFragmentDir, fragmentName);
         fs.writeFile(filePath, fragmentBody);
     }
@@ -285,13 +308,13 @@ async function writeCompiledQueries(nodeDocs) {
  */
 async function execute(operation) {
     var _a, _b;
-    let { operationName, query, variables = {}, additionalHeaders = {} } = operation;
+    let { operationName, query, variables = {}, additionalHeaders = {}, } = operation;
     const headers = Object.assign(Object.assign(Object.assign({}, ((_b = (_a = loadedPluginOptions.fetchOptions) === null || _a === void 0 ? void 0 : _a.headers) !== null && _b !== void 0 ? _b : {})), { "Content-Type": "application/json", Authorization: `Bearer ${loadedPluginOptions.craftGqlToken}` }), additionalHeaders);
     // Set the token, if it exists
     if (previewToken) {
         headers["X-Craft-Token"] = previewToken;
     }
-    const res = await p_retry_1.default(() => fetch(loadedPluginOptions.craftGqlUrl, Object.assign(Object.assign({}, loadedPluginOptions.fetchOptions), { method: "POST", body: JSON.stringify({ query, variables, operationName }), headers })), loadedPluginOptions.retryOptions);
+    const res = await (0, p_retry_1.default)(() => fetch(loadedPluginOptions.craftGqlUrl, Object.assign(Object.assign({}, loadedPluginOptions.fetchOptions), { method: "POST", body: JSON.stringify({ query, variables, operationName }), headers })), loadedPluginOptions.retryOptions);
     // Aaaand remove the token for subsequent requests
     previewToken = null;
     return await res.json();
@@ -299,18 +322,30 @@ async function execute(operation) {
 async function initializePlugin(pluginOptions, gatsbyApi) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
     // Initialize the plugin options
-    loadedPluginOptions.craftGqlUrl = (_a = pluginOptions.craftGqlUrl) !== null && _a !== void 0 ? _a : loadedPluginOptions.craftGqlUrl;
-    loadedPluginOptions.craftGqlToken = (_b = pluginOptions.craftGqlToken) !== null && _b !== void 0 ? _b : loadedPluginOptions.craftGqlToken;
-    loadedPluginOptions.concurrency = (_c = pluginOptions.concurrency) !== null && _c !== void 0 ? _c : loadedPluginOptions.concurrency;
-    loadedPluginOptions.debugDir = (_d = pluginOptions.debugDir) !== null && _d !== void 0 ? _d : loadedPluginOptions.debugDir;
-    loadedPluginOptions.fragmentsDir = (_e = pluginOptions.fragmentsDir) !== null && _e !== void 0 ? _e : loadedPluginOptions.fragmentsDir;
-    loadedPluginOptions.typePrefix = (_f = pluginOptions.typePrefix) !== null && _f !== void 0 ? _f : loadedPluginOptions.typePrefix;
-    loadedPluginOptions.looseInterfaces = (_g = pluginOptions.looseInterfaces) !== null && _g !== void 0 ? _g : loadedPluginOptions.looseInterfaces;
-    loadedPluginOptions.sourcingParams = (_h = pluginOptions.sourcingParams) !== null && _h !== void 0 ? _h : loadedPluginOptions.sourcingParams;
-    loadedPluginOptions.enabledSites = (_j = pluginOptions.enabledSites) !== null && _j !== void 0 ? _j : loadedPluginOptions.enabledSites;
-    loadedPluginOptions.verbose = (_k = pluginOptions.verbose) !== null && _k !== void 0 ? _k : loadedPluginOptions.verbose;
-    loadedPluginOptions.fetchOptions = (_l = pluginOptions.fetchOptions) !== null && _l !== void 0 ? _l : loadedPluginOptions.fetchOptions;
-    loadedPluginOptions.retryOptions = (_m = pluginOptions.retryOptions) !== null && _m !== void 0 ? _m : loadedPluginOptions.retryOptions;
+    loadedPluginOptions.craftGqlUrl =
+        (_a = pluginOptions.craftGqlUrl) !== null && _a !== void 0 ? _a : loadedPluginOptions.craftGqlUrl;
+    loadedPluginOptions.craftGqlToken =
+        (_b = pluginOptions.craftGqlToken) !== null && _b !== void 0 ? _b : loadedPluginOptions.craftGqlToken;
+    loadedPluginOptions.concurrency =
+        (_c = pluginOptions.concurrency) !== null && _c !== void 0 ? _c : loadedPluginOptions.concurrency;
+    loadedPluginOptions.debugDir =
+        (_d = pluginOptions.debugDir) !== null && _d !== void 0 ? _d : loadedPluginOptions.debugDir;
+    loadedPluginOptions.fragmentsDir =
+        (_e = pluginOptions.fragmentsDir) !== null && _e !== void 0 ? _e : loadedPluginOptions.fragmentsDir;
+    loadedPluginOptions.typePrefix =
+        (_f = pluginOptions.typePrefix) !== null && _f !== void 0 ? _f : loadedPluginOptions.typePrefix;
+    loadedPluginOptions.looseInterfaces =
+        (_g = pluginOptions.looseInterfaces) !== null && _g !== void 0 ? _g : loadedPluginOptions.looseInterfaces;
+    loadedPluginOptions.sourcingParams =
+        (_h = pluginOptions.sourcingParams) !== null && _h !== void 0 ? _h : loadedPluginOptions.sourcingParams;
+    loadedPluginOptions.enabledSites =
+        (_j = pluginOptions.enabledSites) !== null && _j !== void 0 ? _j : loadedPluginOptions.enabledSites;
+    loadedPluginOptions.verbose =
+        (_k = pluginOptions.verbose) !== null && _k !== void 0 ? _k : loadedPluginOptions.verbose;
+    loadedPluginOptions.fetchOptions =
+        (_l = pluginOptions.fetchOptions) !== null && _l !== void 0 ? _l : loadedPluginOptions.fetchOptions;
+    loadedPluginOptions.retryOptions =
+        (_m = pluginOptions.retryOptions) !== null && _m !== void 0 ? _m : loadedPluginOptions.retryOptions;
     // Make sure the folders exists
     await fs.ensureDir(loadedPluginOptions.debugDir);
     await fs.ensureDir(loadedPluginOptions.fragmentsDir);
@@ -332,7 +367,7 @@ async function initializePlugin(pluginOptions, gatsbyApi) {
         reporter.info("Gatsby Helper plugin must be at least version 1.1.0 or greater.");
     }
     const { data } = await execute({
-        operationName: 'craftState',
+        operationName: "craftState",
         query: `query craftState { 
             configVersion 
             lastUpdateTime 
@@ -343,8 +378,8 @@ async function initializePlugin(pluginOptions, gatsbyApi) {
         }`,
         variables: {},
         additionalHeaders: {
-            "X-Craft-Gql-Cache": "no-cache"
-        }
+            "X-Craft-Gql-Cache": "no-cache",
+        },
     });
     remoteConfigVersion = data.configVersion;
     lastUpdateTime = data.lastUpdateTime;
@@ -353,9 +388,8 @@ async function initializePlugin(pluginOptions, gatsbyApi) {
     craftPrimarySiteId = data.primarySiteId;
     craftVersion = data.craftVersion;
     // Avoid deprecation errors
-    if (craftVersion >= '3.7.0') {
-        console.log('Switch to canonical?');
-        craftElementIdField = 'canonicalId';
+    if (craftVersion >= "3.7.0") {
+        craftElementIdField = "canonicalId";
     }
     reporter.info(`Craft v${craftVersion}, running Helper plugin v${gatsbyHelperVersion}`);
     // Make sure the fragments exist
@@ -367,35 +401,35 @@ exports.onPluginInit = async (gatsbyApi, pluginOptions) => {
 exports.createSchemaCustomization = async (gatsbyApi) => {
     const config = await getSourcingConfig(gatsbyApi);
     const { createTypes } = gatsbyApi.actions;
-    let typeDefs = '';
+    let typeDefs = "";
     for (let craftInterface of craftInterfaces) {
         let extraFields = {};
-        let extraFieldsAsString = '';
-        let redefineTypes = '';
+        let extraFieldsAsString = "";
+        let redefineTypes = "";
         const extractFieldType = (field, onlyNullable) => {
             const fieldName = field.name;
-            const skippedTypes = ['id', 'parent', 'children', 'next', 'prev'];
+            const skippedTypes = ["id", "parent", "children", "next", "prev"];
             // If skipped type or begins with an underscore
-            if (skippedTypes.includes(fieldName) || fieldName.charAt(0) === '_') {
+            if (skippedTypes.includes(fieldName) || fieldName.charAt(0) === "_") {
                 return false;
             }
             let fieldType = field.type.toString();
             // If only nullable and is non-nullable
-            if (onlyNullable && fieldType.slice(-1) == '!') {
+            if (onlyNullable && fieldType.slice(-1) == "!") {
                 return false;
             }
             // If any arguments are required, can't have it.
             for (let fieldArgument of field.args) {
-                if (fieldArgument.type.toString().slice(-1) == '!') {
+                if (fieldArgument.type.toString().slice(-1) == "!") {
                     return false;
                 }
             }
             // Convert Craft's DateTime to Gatsby's Date.
-            fieldType = fieldType.replace(new RegExp(craftGqlTypePrefix + 'DateTime'), 'JSON');
+            fieldType = fieldType.replace(new RegExp(craftGqlTypePrefix + "DateTime"), "JSON");
             if (fieldType.match(/(Int|Float|String|Boolean|ID|JSON)(\]|!|$)/)) {
                 return fieldType;
             }
-            return fieldType.replace(/^([^a-z]+)?([a-z_]+)([^a-z]+)?$/i, '$1' + loadedPluginOptions.typePrefix + '$2$3');
+            return fieldType.replace(/^([^a-z]+)?([a-z_]+)([^a-z]+)?$/i, "$1" + loadedPluginOptions.typePrefix + "$2$3");
         };
         // For all interfaces
         if (craftTypesByInterface[craftInterface]) {
@@ -449,7 +483,7 @@ exports.createSchemaCustomization = async (gatsbyApi) => {
 };
 // @ts-ignore
 // Add `localFile` nodes to assets.
-exports.createResolvers = async ({ createResolvers, intermediateSchema, actions, cache, createNodeId, store, reporter }) => {
+exports.createResolvers = async ({ createResolvers, intermediateSchema, actions, cache, createNodeId, store, reporter, }) => {
     const { createNode } = actions;
     const ifaceName = `${loadedPluginOptions.typePrefix + craftGqlTypePrefix}AssetInterface`;
     const iface = intermediateSchema.getType(ifaceName);
@@ -462,13 +496,14 @@ exports.createResolvers = async ({ createResolvers, intermediateSchema, actions,
                     type: `File`,
                     async resolve(source) {
                         if (source.url) {
-                            return await gatsby_source_filesystem_1.createRemoteFileNode({
+                            return await (0, gatsby_source_filesystem_1.createRemoteFileNode)({
                                 url: encodeURI(source.url),
+                                // @ts-ignore
                                 store,
                                 cache,
                                 createNode,
                                 createNodeId,
-                                reporter
+                                reporter,
                             });
                         }
                     },
@@ -483,18 +518,20 @@ exports.sourceNodes = async (gatsbyApi) => {
     const { cache, reporter, webhookBody } = gatsbyApi;
     const config = await getSourcingConfig(gatsbyApi);
     // If this is a webhook call
-    if (webhookBody && typeof webhookBody == "object" && Object.keys(webhookBody).length) {
+    if (webhookBody &&
+        typeof webhookBody == "object" &&
+        Object.keys(webhookBody).length) {
         reporter.info("Processing webhook.");
         const nodeEvent = (webhookBody) => {
             var _a;
             const { operation, typeName, id, siteId } = webhookBody;
-            let eventName = '';
+            let eventName = "";
             switch (operation) {
-                case 'delete':
-                    eventName = 'DELETE';
+                case "delete":
+                    eventName = "DELETE";
                     break;
-                case 'update':
-                    eventName = 'UPDATE';
+                case "update":
+                    eventName = "UPDATE";
                     break;
             }
             previewToken = (_a = webhookBody.token) !== null && _a !== void 0 ? _a : null;
@@ -511,8 +548,8 @@ exports.sourceNodes = async (gatsbyApi) => {
         });
         return;
     }
-    const localConfigVersion = (await cache.get(`CRAFT_CONFIG_VERSION`)) || '';
-    const localContentUpdateTime = (await cache.get(`CRAFT_LAST_CONTENT_UPDATE`)) || '';
+    const localConfigVersion = (await cache.get(`CRAFT_CONFIG_VERSION`)) || "";
+    const localContentUpdateTime = (await cache.get(`CRAFT_LAST_CONTENT_UPDATE`)) || "";
     // If either project config changed or we don't have cached content, source it all
     if (remoteConfigVersion !== localConfigVersion || !localContentUpdateTime) {
         reporter.info("Cached content is unavailable or outdated, sourcing _all_ nodes.");
@@ -522,34 +559,42 @@ exports.sourceNodes = async (gatsbyApi) => {
         reporter.info(`Craft config version has not changed since last sourcing. Checking for content changes since "${localContentUpdateTime}".`);
         // otherwise, check for changed and deleted content.
         const { data } = await execute({
-            operationName: 'nodeChanges',
+            operationName: "nodeChanges",
             query: `query nodeChanges {  
                 nodesUpdatedSince (since: "${localContentUpdateTime}" site: ${craftEnabledSites}) { nodeId nodeType siteId}
                 nodesDeletedSince (since: "${localContentUpdateTime}") { nodeId nodeType siteId}
             }`,
             variables: {},
             additionalHeaders: {
-                "X-Craft-Gql-Cache": "no-cache"
-            }
+                "X-Craft-Gql-Cache": "no-cache",
+            },
         });
         const updatedNodes = data.nodesUpdatedSince;
         const deletedNodes = data.nodesDeletedSince;
         // Create the sourcing node events
         const nodeEvents = [
-            ...updatedNodes.map(entry => {
+            ...updatedNodes.map((entry) => {
                 return {
-                    eventName: 'UPDATE',
+                    eventName: "UPDATE",
                     remoteTypeName: entry.nodeType,
-                    remoteId: { __typename: entry.nodeType, id: entry.nodeId, siteId: entry.siteId }
+                    remoteId: {
+                        __typename: entry.nodeType,
+                        id: entry.nodeId,
+                        siteId: entry.siteId,
+                    },
                 };
             }),
-            ...deletedNodes.map(entry => {
+            ...deletedNodes.map((entry) => {
                 return {
-                    eventName: 'DELETE',
+                    eventName: "DELETE",
                     remoteTypeName: entry.nodeType,
-                    remoteId: { __typename: entry.nodeType, id: entry.nodeId, siteId: entry.siteId }
+                    remoteId: {
+                        __typename: entry.nodeType,
+                        id: entry.nodeId,
+                        siteId: entry.siteId,
+                    },
                 };
-            })
+            }),
         ];
         if (nodeEvents.length) {
             reporter.info("Sourcing changes for " + nodeEvents.length + " nodes.");
@@ -580,7 +625,9 @@ async function getSourcingConfig(gatsbyApi) {
         schema,
         gatsbyNodeDefs: buildNodeDefinitions({ gatsbyNodeTypes, documents }),
         gatsbyTypePrefix: loadedPluginOptions.typePrefix,
-        execute: wrapQueryExecutorWithQueue(execute, { concurrency: loadedPluginOptions.concurrency }),
+        execute: wrapQueryExecutorWithQueue(execute, {
+            concurrency: loadedPluginOptions.concurrency,
+        }),
         verbose: loadedPluginOptions.verbose,
     });
 }
